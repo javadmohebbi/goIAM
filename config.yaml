@@ -1,0 +1,20 @@
+port: 8080
+debug: true
+auth_provider: local
+
+# Supported values: sqlite, mysql, postgres, sqlserver, clickhouse
+database: "sqlite"
+database_dsn: "./data/iam.db"
+
+
+#database: "postgres"
+#database_dsn: "host=localhost user=postgres password=secret dbname=iamdb port=5432 sslmode=disable"
+
+#database: "mysql"
+#database_dsn: "user:password@tcp(localhost:3306)/iamdb?charset=utf8mb4&parseTime=True&loc=Local"
+
+#database: "sqlserver"
+#database_dsn: "sqlserver://user:password@localhost:1433?database=iamdb"
+
+#database: "clickhouse"
+#database_dsn: "tcp://localhost:9000?username=default&password=&database=iamdb"

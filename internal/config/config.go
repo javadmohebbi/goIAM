@@ -9,8 +9,9 @@ import (
 type Config struct {
 	Port         int    `yaml:"port"`
 	Debug        bool   `yaml:"debug"`
-	DatabaseDSN  string `yaml:"database_dsn"`
-	AuthProvider string `yaml:"auth_provider"` // e.g., local, ldap, auth0
+	Database     string `yaml:"database"`      // "sqlite", "postgres", "mysql", "sqlserver", "clickhouse"
+	DatabaseDSN  string `yaml:"database_dsn"`  // connection string
+	AuthProvider string `yaml:"auth_provider"` // "local", "ldap", etc.
 }
 
 func LoadConfig(path string) (*Config, error) {

@@ -1,96 +1,121 @@
 # goIAM
 
-**goIAM** is a modern, pluggable Identity and Access Management (IAM) microservice written in Go. It supports multiple authentication providers (local DB, LDAP, Firebase, Auth0), role-based access control (RBAC), SSO, and 2FA — all configurable via YAML and exposed through a REST API and CLI.
+**goIAM** is a modern, modular Identity and Access Management (IAM) microservice in Go. It supports local authentication with username/password, 2FA (TOTP + backup codes), and pluggable future support for LDAP, Firebase, and Auth0.
 
 ---
 
 ## 🚀 Features
 
-- ✅ Modular authentication (Local, LDAP/Active Directory, Firebase, Auth0, ...)
-- 🔐 Role-based access control (RBAC)
-- 🔁 SSO-ready structure
-- 🔢 TOTP-based 2FA support (Google Authenticator, etc.)
-- ⚙️ Configurable via `config.yaml`
-- 🌐 REST API (Fiber v3) + CLI with flags
-- 🔐 JWT-based authentication
-- 🧪 Easy to run with `go run .`
+- ✅ Local authentication with password hashing
+- 🔐 TOTP-based 2FA (Google Authenticator, Authy, etc.)
+- 🔁 One-time backup codes
+- 🔐 JWT-secured routes
+- 🧩 Groups, Roles, Policies for future access control
+- 🌐 Fiber v3 HTTP API + CLI compatibility
+- ⚙️ Configurable with `config.yaml`
 
 ---
 
-## 📁 Project Structure
+## 🏗️ Project Structure
 
 ```bash
 goIAM/
-├── cmd/server/           # Main API entry point (real logic)
+├── cmd/server/           # CLI entry point (Main)
 ├── internal/
-│   ├── api/              # Fiber routes & handlers
-│   ├── auth/             # Local, LDAP, Firebase, Auth0 backends
+│   ├── api/              # Fiber routes and logic
+│   ├── auth/             # Password hashing, TOTP, backup code
 │   ├── config/           # YAML config loader
-│   ├── db/               # Models and database logic
-│   ├── policy/           # Policy enforcement (RBAC)
-│   ├── sso/              # SSO logic (future)
-│   └── totp/             # 2FA logic (TOTP)
-├── pkg/                  # Public libraries/utilities (optional)
+│   ├── db/               # GORM models and DB logic
+│   ├── middleware/       # JWT + 2FA verification
 ├── main.go               # Thin wrapper for go run .
-├── config.yaml           # Example configuration file
-├── go.mod
-└── go.sum
+├── config.yaml           # Configuration file
 ```
 
 ---
 
 ## 📦 Getting Started
 
-### 1. Clone the Repository
+### 1. Clone and build
 
 ```bash
 git clone https://github.com/javadmohebbi/goIAM.git
 cd goIAM
-```
-
-### 2. Run the API
-
-```bash
 go run .
 ```
 
-### 3. CLI Flags
-
-| Flag         | Description                          | Default       |
-|--------------|--------------------------------------|---------------|
-| `--config`   | Path to YAML config file             | `config.yaml` |
-| `--port`     | HTTP server port                     | `8080`        |
-| `--debug`    | Enable debug logging (true/false)    | `false`       |
-
-Example:
-
-```bash
-go run . --port 9090 --debug --config=./config.yaml
-```
-
----
-
-## ⚙️ Sample `config.yaml`
+### 2. Example `config.yaml`
 
 ```yaml
 port: 8080
 debug: true
-database_dsn: "sqlite://./data.db"
-auth_provider: "local" # options: local, ldap, auth0, firebase
+jwt_secret: "your-secret"
+database: "sqlite"
+database_dsn: "./data/iam.db"
+auth_provider: "local"
 ```
 
 ---
 
-## 📌 TODO
+## 🔐 API Endpoints (Tested with curl)
 
-- [ ] Add OAuth2 and SAML integrations
-- [ ] Admin panel for user/group/policy management
-- [ ] JWT refresh tokens
-- [ ] OpenID Connect support
-- [ ] Audit logs and admin CLI
+### Register
+
+```bash
+curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{
+  "username": "john",
+  "password": "secret123",
+  "email": "john@example.com",
+  "phone_number": "1234567890",
+  "first_name": "John",
+  "middle_name": "Q",
+  "last_name": "Public",
+  "address": "123 Main St"
+}'
+```
+
+### Login
+
+```bash
+curl -X POST http://localhost:8080/auth/login -H "Content-Type: application/json" -d '{
+  "username": "john",
+  "password": "secret123"
+}'
+```
+
+### 2FA Setup (TOTP)
+
+```bash
+curl -X POST http://localhost:8080/secure/auth/2fa/setup -H "Authorization: Bearer $TOKEN"
+```
+
+### 2FA Verify
+
+```bash
+curl -X POST http://localhost:8080/secure/auth/2fa/verify -H "Authorization: Bearer $TOKEN" -d '{"code": "123456"}'
+```
+
+### Backup Codes
+
+```bash
+curl -X POST http://localhost:8080/secure/auth/backup-codes/regenerate -H "Authorization: Bearer $TOKEN"
+```
+
+### 2FA Disable
+
+```bash
+curl -X POST http://localhost:8080/secure/auth/2fa/disable -H "Authorization: Bearer $TOKEN" -d '{"code": "123456"}'
+```
+
+---
+
+## ✅ Coming Soon
+
+- LDAP, Firebase, Auth0 login strategies
+- Admin interface for managing users, policies, and roles
+- OAuth2 / OpenID Connect support
 
 ---
 
 ## 📄 License
 
-MIT License © [Javad Mohebi](https://github.com/javadmohebbi)
+<!-- MIT License © [Javad Mohebi](https://github.com/javadmohebbi) -->

@@ -11,9 +11,12 @@ func StartServer(cfg *config.Config) error {
 	app := fiber.New()
 
 	app.Get("/health", func(c fiber.Ctx) error {
-		return c.SendString("goIAM is healthy ✅")
+		return c.SendString("healthy")
 	})
 
-	addr := fmt.Sprintf(":%d", cfg.Port)
-	return app.Listen(addr)
+	if cfg.AuthProvider == "local" {
+		RegisterLocalRoutes(app, cfg)
+	}
+
+	return app.Listen(fmt.Sprintf(":%d", cfg.Port))
 }

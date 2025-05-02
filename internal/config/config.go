@@ -12,6 +12,7 @@ type Config struct {
 	Database     string `yaml:"database"`      // "sqlite", "postgres", "mysql", "sqlserver", "clickhouse"
 	DatabaseDSN  string `yaml:"database_dsn"`  // connection string
 	AuthProvider string `yaml:"auth_provider"` // "local", "ldap", etc.
+	JWTSecret    string `yaml:"jwt_secret"`
 }
 
 func LoadConfig(path string) (*Config, error) {

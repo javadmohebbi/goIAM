@@ -1,10 +1,13 @@
 port: 8080
+
+jwt_secret: "super-secret-key"
+
 debug: true
 auth_provider: local
 
 # Supported values: sqlite, mysql, postgres, sqlserver, clickhouse
 database: "sqlite"
-database_dsn: "./data/iam.db"
+database_dsn: "/home/javad/goIAM/iam.db"
 
 
 #database: "postgres"

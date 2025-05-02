@@ -35,10 +35,16 @@ func Init(engine, dsn string) {
 	var err error
 	DB, err = gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect to %s: %v", engine, err)
+		log.Fatalf("failed to connect to %s: %v | %s", engine, err, dsn)
 	}
 
-	if err := DB.AutoMigrate(&User{}); err != nil {
+	if err := DB.AutoMigrate(
+		&User{},
+		&Group{},
+		&Role{},
+		&Policy{},
+		&BackupCode{},
+	); err != nil {
 		log.Fatalf("auto migration failed: %v", err)
 	}
 }

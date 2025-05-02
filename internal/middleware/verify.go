@@ -10,14 +10,19 @@ import (
 	"github.com/javadmohebbi/goIAM/internal/db"
 )
 
+// RequireAuth is a Fiber middleware that verifies the Authorization Bearer JWT token,
+// checks if the user exists, and enforces 2FA if required.
+// On success, it stores the `db.User` in c.Locals("user") for route handlers.
 func RequireAuth(cfg *config.Config) fiber.Handler {
 	return func(c fiber.Ctx) error {
+		// Extract bearer token
 		authHeader := c.Get("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
 			return fiber.NewError(fiber.StatusUnauthorized, "missing token")
 		}
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
+		// Parse and verify JWT
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method")
@@ -33,20 +38,29 @@ func RequireAuth(cfg *config.Config) fiber.Handler {
 			return fiber.NewError(fiber.StatusUnauthorized, "invalid claims")
 		}
 
+		// Extract user ID from token
 		userID, ok := claims["sub"].(float64)
 		if !ok {
 			return fiber.NewError(fiber.StatusUnauthorized, "invalid user ID")
 		}
 
+		// Load user from DB
 		var user db.User
 		if err := db.DB.First(&user, uint(userID)).Error; err != nil {
 			return fiber.NewError(fiber.StatusUnauthorized, "user not found")
 		}
 
-		if user.Requires2FA && !user.TwoFAVerified {
+		// Check if 2FA is required but not verified
+		// Skip 2FA check only for /2fa/verify and /2fa/setup
+		path := c.Path()
+		verified := claims["2fa"] == true
+
+		if user.Requires2FA && !verified &&
+			path != "/secure/auth/2fa/verify" && path != "/secure/auth/2fa/setup" {
 			return fiber.NewError(fiber.StatusForbidden, "2FA required")
 		}
 
+		// Store user object in Fiber context
 		c.Locals("user", user)
 		return c.Next()
 	}

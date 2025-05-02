@@ -128,12 +128,14 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 			return fiber.NewError(500, "failed to generate TOTP secret")
 		}
 
-		// In real case: save secret in DB under a separate field (not yet implemented)
-		// TODO: Add user.TOTPSecret = key.Secret() and save if you want to persist
+		user.TOTPSecret = key.Secret()
+		if err := db.DB.Save(&user).Error; err != nil {
+			return fiber.NewError(500, "failed to save 2FA secret")
+		}
 
 		return c.JSON(fiber.Map{
 			"otpauth_url": qrURL,
-			"secret":      key.Secret(), // plaintext secret (to store once)
+			"secret":      key.Secret(),
 		})
 	})
 

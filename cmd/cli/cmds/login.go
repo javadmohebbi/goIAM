@@ -15,11 +15,20 @@ import (
 
 func LoginCmd(apiURL *string) *cobra.Command {
 	var username, password string
+	var useStdin bool
 
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login and handle optional 2FA verification",
 		Run: func(cmd *cobra.Command, args []string) {
+			// Read password from stdin if --stdin or no password provided
+			if useStdin || password == "" {
+				fmt.Print("Enter password: ")
+				reader := bufio.NewReader(os.Stdin)
+				pw, _ := reader.ReadString('\n')
+				password = strings.TrimSpace(pw)
+			}
+
 			payload := map[string]string{
 				"username": username,
 				"password": password,
@@ -35,7 +44,6 @@ func LoginCmd(apiURL *string) *cobra.Command {
 
 			output, _ := io.ReadAll(res.Body)
 
-			// Case: 2FA required, we got a short-lived token
 			if res.StatusCode == http.StatusAccepted {
 				fmt.Println("2FA required.")
 
@@ -69,8 +77,6 @@ func LoginCmd(apiURL *string) *cobra.Command {
 
 					if verifyRes.StatusCode == http.StatusOK {
 						fmt.Println("2FA verified.")
-
-						// Try to extract the new long-lived token from response
 						token := extractToken(vout)
 						if token != "" {
 							fmt.Println("Token:", token)
@@ -87,7 +93,6 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					}
 				}
 			} else {
-				// Case: no 2FA, login successful
 				token := extractToken(output)
 				if token != "" {
 					fmt.Println("Token:", token)
@@ -99,9 +104,9 @@ func LoginCmd(apiURL *string) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&username, "username", "u", "", "Username (required)")
-	cmd.Flags().StringVarP(&password, "password", "p", "", "Password (required)")
+	cmd.Flags().StringVarP(&password, "password", "p", "", "Password (optional if --stdin)")
+	cmd.Flags().BoolVar(&useStdin, "stdin", false, "Read password from stdin")
 	cmd.MarkFlagRequired("username")
-	cmd.MarkFlagRequired("password")
 
 	return cmd
 }

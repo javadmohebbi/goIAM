@@ -35,16 +35,16 @@ func LoginCmd(apiURL *string) *cobra.Command {
 
 			output, _ := io.ReadAll(res.Body)
 
+			// Case: 2FA required, we got a short-lived token
 			if res.StatusCode == http.StatusAccepted {
-				fmt.Println("🔐 2FA required.")
+				fmt.Println("2FA required.")
 
 				unverifiedToken := extractToken(output)
 				if unverifiedToken == "" {
-					fmt.Println("⚠️  Could not extract token from login response.")
+					fmt.Println("Could not extract token from login response.")
 					return
 				}
 
-				// Allow 3 tries for TOTP/backup code
 				reader := bufio.NewReader(os.Stdin)
 				for attempt := 1; attempt <= 3; attempt++ {
 					fmt.Printf("Enter TOTP or backup code (attempt %d/3): ", attempt)
@@ -68,20 +68,32 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					vout, _ := io.ReadAll(verifyRes.Body)
 
 					if verifyRes.StatusCode == http.StatusOK {
-						fmt.Println("✅ 2FA verified!")
-						fmt.Println(string(vout))
+						fmt.Println("2FA verified.")
+
+						// Try to extract the new long-lived token from response
+						token := extractToken(vout)
+						if token != "" {
+							fmt.Println("Token:", token)
+						} else {
+							fmt.Println(string(vout))
+						}
 						return
 					}
 
-					fmt.Println("❌ Invalid code. Try again.")
+					fmt.Println("Invalid code.")
 					if attempt == 3 {
-						fmt.Println("⛔ Too many failed attempts.")
+						fmt.Println("Too many failed attempts.")
 						return
 					}
 				}
 			} else {
-				// Login succeeded without 2FA
-				fmt.Println(string(output))
+				// Case: no 2FA, login successful
+				token := extractToken(output)
+				if token != "" {
+					fmt.Println("Token:", token)
+				} else {
+					fmt.Println(string(output))
+				}
 			}
 		},
 	}

@@ -56,7 +56,7 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 		var body struct {
 			Username   string `json:"username"`
 			Password   string `json:"password"`
-			BackupCode string `json:"backup_code"`
+			BackupCode string `json:"backup_code"` // optional
 		}
 		if err := c.Bind().Body(&body); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid input")
@@ -67,36 +67,52 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 			return fiber.NewError(fiber.StatusUnauthorized, "user not found")
 		}
 
-		if user.Requires2FA {
-			if body.BackupCode != "" {
-				valid := false
-				for _, bc := range user.BackupCodes {
-					if !bc.Used && auth.CheckBackupCode(body.BackupCode, bc.CodeHash) {
-						valid = true
-						bc.Used = true
-						db.DB.Save(&bc)
-						break
-					}
-				}
-				if !valid {
-					return fiber.NewError(fiber.StatusForbidden, "invalid backup code")
-				}
-			} else if !auth.CheckPasswordHash(body.Password, user.PasswordHash) {
-				return fiber.NewError(fiber.StatusUnauthorized, "invalid password")
+		// Always check password first
+		if !auth.CheckPasswordHash(body.Password, user.PasswordHash) {
+			return fiber.NewError(fiber.StatusUnauthorized, "invalid credentials")
+		}
+
+		// ✅ 2FA required but no backup code → return token + status 202
+		if user.Requires2FA && body.BackupCode == "" {
+			// Return short-lived token to allow /secure/auth/2fa/verify
+			totpToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+				"sub":  user.ID,
+				"name": user.Username,
+				"exp":  time.Now().Add(5 * time.Minute).Unix(),
+			})
+			signed, err := totpToken.SignedString([]byte(cfg.JWTSecret))
+			if err != nil {
+				return fiber.NewError(fiber.StatusInternalServerError, "token creation failed")
 			}
-		} else {
-			if !auth.CheckPasswordHash(body.Password, user.PasswordHash) {
-				return fiber.NewError(fiber.StatusUnauthorized, "invalid credentials")
+			return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
+				"message": "2FA required",
+				"token":   signed,
+			})
+		}
+
+		// ✅ 2FA + backup code handling
+		if user.Requires2FA && body.BackupCode != "" {
+			valid := false
+			for _, bc := range user.BackupCodes {
+				if !bc.Used && auth.CheckBackupCode(body.BackupCode, bc.CodeHash) {
+					valid = true
+					bc.Used = true
+					db.DB.Save(&bc)
+					break
+				}
+			}
+			if !valid {
+				return fiber.NewError(fiber.StatusForbidden, "invalid backup code")
 			}
 		}
 
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// ✅ Issue regular token (24h)
+		finalToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"sub":  user.ID,
 			"name": user.Username,
 			"exp":  time.Now().Add(24 * time.Hour).Unix(),
 		})
-
-		signed, err := token.SignedString([]byte(cfg.JWTSecret))
+		signed, err := finalToken.SignedString([]byte(cfg.JWTSecret))
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "token creation failed")
 		}
@@ -163,7 +179,23 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to update user")
 		}
 
-		return c.JSON(fiber.Map{"message": "2FA verified and enabled"})
+		// Generate final JWT token
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"sub":  user.ID,
+			"name": user.Username,
+			"exp":  time.Now().Add(24 * time.Hour).Unix(),
+		})
+
+		signed, err := token.SignedString([]byte(cfg.JWTSecret))
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "failed to create token")
+		}
+
+		return c.JSON(fiber.Map{
+			"message": "2FA verified and enabled",
+			"token":   signed,
+		})
+
 	})
 
 	secure.Post("/auth/2fa/setup", func(c fiber.Ctx) error {

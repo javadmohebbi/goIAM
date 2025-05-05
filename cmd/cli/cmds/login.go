@@ -17,25 +17,25 @@ import (
 // LoginCmd returns the login command, which handles authentication and 2FA.
 func LoginCmd(apiURL *string) *cobra.Command {
 	var username, password string
-	var useStdin bool
 
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login and handle optional 2FA verification",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Determine password source
+			// Detect if password was provided directly
 			if password == "" {
 				fi, _ := os.Stdin.Stat()
 				if (fi.Mode() & os.ModeCharDevice) == 0 {
-					// stdin is piped
-					passBytes, err := io.ReadAll(os.Stdin)
-					if err != nil {
+					// stdin is being piped (but we want to preserve for 2FA)
+					reader := bufio.NewReader(os.Stdin)
+					passBytes, err := reader.ReadBytes('\n')
+					if err != nil && err != io.EOF {
 						fmt.Println("Failed to read piped password:", err)
 						return
 					}
 					password = strings.TrimSpace(string(passBytes))
 				} else {
-					// stdin is terminal (secure prompt)
+					// terminal: securely read password
 					fmt.Print("Enter password: ")
 					passBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
 					fmt.Println()
@@ -62,7 +62,6 @@ func LoginCmd(apiURL *string) *cobra.Command {
 
 			output, _ := io.ReadAll(res.Body)
 
-			// Case: 2FA required
 			if res.StatusCode == http.StatusAccepted {
 				fmt.Println("2FA required.")
 
@@ -72,7 +71,15 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					return
 				}
 
-				reader := bufio.NewReader(os.Stdin)
+				// Read from terminal even if stdin was piped before
+				tty, err := os.Open("/dev/tty")
+				if err != nil {
+					fmt.Println("Cannot open /dev/tty for 2FA input:", err)
+					return
+				}
+				defer tty.Close()
+
+				reader := bufio.NewReader(tty)
 				for attempt := 1; attempt <= 3; attempt++ {
 					fmt.Printf("Enter TOTP or backup code (attempt %d/3): ", attempt)
 					codeInput, _ := reader.ReadString('\n')
@@ -112,7 +119,6 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					}
 				}
 			} else {
-				// Normal login
 				token := extractToken(output)
 				if token != "" {
 					fmt.Println("Token:", token)
@@ -124,14 +130,12 @@ func LoginCmd(apiURL *string) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&username, "username", "u", "", "Username (required)")
-	cmd.Flags().StringVarP(&password, "password", "p", "", "Password (optional; will be read from stdin if not provided)")
-	cmd.Flags().BoolVar(&useStdin, "stdin", false, "Deprecated: use --password='' instead")
+	cmd.Flags().StringVarP(&password, "password", "p", "", "Password (optional; will be read securely or from stdin)")
 	cmd.MarkFlagRequired("username")
 
 	return cmd
 }
 
-// extractToken extracts the "token" value from a JSON response
 func extractToken(raw []byte) string {
 	var result map[string]string
 	if err := json.Unmarshal(raw, &result); err == nil {

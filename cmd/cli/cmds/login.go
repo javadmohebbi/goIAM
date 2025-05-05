@@ -11,8 +11,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
+// LoginCmd returns the login command, which handles authentication and 2FA.
 func LoginCmd(apiURL *string) *cobra.Command {
 	var username, password string
 	var useStdin bool
@@ -21,12 +23,28 @@ func LoginCmd(apiURL *string) *cobra.Command {
 		Use:   "login",
 		Short: "Login and handle optional 2FA verification",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Read password from stdin if --stdin or no password provided
-			if useStdin || password == "" {
-				fmt.Print("Enter password: ")
-				reader := bufio.NewReader(os.Stdin)
-				pw, _ := reader.ReadString('\n')
-				password = strings.TrimSpace(pw)
+			// Determine password source
+			if password == "" {
+				fi, _ := os.Stdin.Stat()
+				if (fi.Mode() & os.ModeCharDevice) == 0 {
+					// stdin is piped
+					passBytes, err := io.ReadAll(os.Stdin)
+					if err != nil {
+						fmt.Println("Failed to read piped password:", err)
+						return
+					}
+					password = strings.TrimSpace(string(passBytes))
+				} else {
+					// stdin is terminal (secure prompt)
+					fmt.Print("Enter password: ")
+					passBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+					fmt.Println()
+					if err != nil {
+						fmt.Println("Failed to read password:", err)
+						return
+					}
+					password = strings.TrimSpace(string(passBytes))
+				}
 			}
 
 			payload := map[string]string{
@@ -44,6 +62,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 
 			output, _ := io.ReadAll(res.Body)
 
+			// Case: 2FA required
 			if res.StatusCode == http.StatusAccepted {
 				fmt.Println("2FA required.")
 
@@ -93,6 +112,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					}
 				}
 			} else {
+				// Normal login
 				token := extractToken(output)
 				if token != "" {
 					fmt.Println("Token:", token)
@@ -104,13 +124,14 @@ func LoginCmd(apiURL *string) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&username, "username", "u", "", "Username (required)")
-	cmd.Flags().StringVarP(&password, "password", "p", "", "Password (optional if --stdin)")
-	cmd.Flags().BoolVar(&useStdin, "stdin", false, "Read password from stdin")
+	cmd.Flags().StringVarP(&password, "password", "p", "", "Password (optional; will be read from stdin if not provided)")
+	cmd.Flags().BoolVar(&useStdin, "stdin", false, "Deprecated: use --password='' instead")
 	cmd.MarkFlagRequired("username")
 
 	return cmd
 }
 
+// extractToken extracts the "token" value from a JSON response
 func extractToken(raw []byte) string {
 	var result map[string]string
 	if err := json.Unmarshal(raw, &result); err == nil {

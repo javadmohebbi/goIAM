@@ -7,7 +7,7 @@ type User struct {
 	Username      string `gorm:"uniqueIndex;not null"`
 	Email         string `gorm:"uniqueIndex"`
 	EmailVerified bool   `gorm:"default:false"`
-	PhoneNumber   string `gorm:"uniqueIndex"`
+	PhoneNumber   string //`gorm:"uniqueIndex"`
 	PhoneVerified bool   `gorm:"default:false"`
 	PasswordHash  string `gorm:"not null"`
 

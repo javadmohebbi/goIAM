@@ -1,3 +1,4 @@
+// Package cmds provides CLI commands to interact with the goIAM backend.
 package cmds
 
 import (
@@ -14,7 +15,14 @@ import (
 	"golang.org/x/term"
 )
 
-// LoginCmd returns the login command, which handles authentication and 2FA.
+// LoginCmd returns the `login` Cobra command which logs in a user,
+// handles optional 2FA flow, and prints the JWT token on success.
+//
+// Parameters:
+//   - apiURL: Pointer to the base URL of the goIAM API.
+//
+// Returns:
+//   - *cobra.Command: The Cobra command for user login.
 func LoginCmd(apiURL *string) *cobra.Command {
 	var username, password string
 
@@ -22,11 +30,11 @@ func LoginCmd(apiURL *string) *cobra.Command {
 		Use:   "login",
 		Short: "Login and handle optional 2FA verification",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Detect if password was provided directly
+			// If password is not provided with --password, read from stdin or securely via terminal
 			if password == "" {
 				fi, _ := os.Stdin.Stat()
 				if (fi.Mode() & os.ModeCharDevice) == 0 {
-					// stdin is being piped (but we want to preserve for 2FA)
+					// Read from piped stdin (e.g., echo "pass" | ...)
 					reader := bufio.NewReader(os.Stdin)
 					passBytes, err := reader.ReadBytes('\n')
 					if err != nil && err != io.EOF {
@@ -35,7 +43,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					}
 					password = strings.TrimSpace(string(passBytes))
 				} else {
-					// terminal: securely read password
+					// Read from terminal with masking
 					fmt.Print("Enter password: ")
 					passBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
 					fmt.Println()
@@ -47,12 +55,14 @@ func LoginCmd(apiURL *string) *cobra.Command {
 				}
 			}
 
+			// Construct login payload
 			payload := map[string]string{
 				"username": username,
 				"password": password,
 			}
 			body, _ := json.Marshal(payload)
 
+			// Perform login request
 			res, err := http.Post(*apiURL+"/auth/login", "application/json", bytes.NewBuffer(body))
 			if err != nil {
 				fmt.Println("Error:", err)
@@ -62,6 +72,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 
 			output, _ := io.ReadAll(res.Body)
 
+			// If 2FA is required, the API responds with 202 and a temporary token
 			if res.StatusCode == http.StatusAccepted {
 				fmt.Println("2FA required.")
 
@@ -71,7 +82,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					return
 				}
 
-				// Read from terminal even if stdin was piped before
+				// Always read 2FA input from /dev/tty, not stdin, to support piped workflows
 				tty, err := os.Open("/dev/tty")
 				if err != nil {
 					fmt.Println("Cannot open /dev/tty for 2FA input:", err)
@@ -88,6 +99,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					verifyBody := map[string]string{"code": codeInput}
 					vbody, _ := json.Marshal(verifyBody)
 
+					// Send 2FA verification request
 					req, _ := http.NewRequest("POST", *apiURL+"/secure/auth/2fa/verify", bytes.NewBuffer(vbody))
 					req.Header.Set("Authorization", "Bearer "+unverifiedToken)
 					req.Header.Set("Content-Type", "application/json")
@@ -119,6 +131,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					}
 				}
 			} else {
+				// Non-2FA login success
 				token := extractToken(output)
 				if token != "" {
 					fmt.Println("Token:", token)
@@ -129,6 +142,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 		},
 	}
 
+	// Command-line flags
 	cmd.Flags().StringVarP(&username, "username", "u", "", "Username (required)")
 	cmd.Flags().StringVarP(&password, "password", "p", "", "Password (optional; will be read securely or from stdin)")
 	cmd.MarkFlagRequired("username")
@@ -136,6 +150,13 @@ func LoginCmd(apiURL *string) *cobra.Command {
 	return cmd
 }
 
+// extractToken parses the response body to extract a "token" field from JSON.
+//
+// Parameters:
+//   - raw: Raw byte slice of the response body.
+//
+// Returns:
+//   - string: The extracted token value if present, otherwise empty.
 func extractToken(raw []byte) string {
 	var result map[string]string
 	if err := json.Unmarshal(raw, &result); err == nil {

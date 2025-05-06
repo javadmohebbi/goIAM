@@ -1,3 +1,4 @@
+// Package cmds provides CLI commands to interact with the goIAM backend.
 package cmds
 
 import (
@@ -10,6 +11,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Disable2FACmd returns the `2fa-disable` Cobra command,
+// which disables 2FA protection for the currently authenticated user.
+//
+// This command:
+//   - Sends a POST request to /secure/auth/2fa/disable
+//   - Requires a valid JWT token and a TOTP code for verification
+//
+// Flags:
+//
+//	--code string     Your current TOTP code (required)
+//	--token string    JWT token (global flag)
 func Disable2FACmd(apiURL *string, token *string) *cobra.Command {
 	var code string
 
@@ -35,7 +47,9 @@ func Disable2FACmd(apiURL *string, token *string) *cobra.Command {
 			fmt.Println(string(output))
 		},
 	}
+
 	cmd.Flags().StringVar(&code, "code", "", "Your current 2FA TOTP code")
 	cmd.MarkFlagRequired("code")
+
 	return cmd
 }

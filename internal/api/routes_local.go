@@ -1,3 +1,5 @@
+// Package api provides HTTP route handlers for goIAM.
+// This file contains local authentication and 2FA setup routes.
 package api
 
 import (
@@ -11,48 +13,73 @@ import (
 	"github.com/javadmohebbi/goIAM/internal/middleware"
 )
 
+// RegisterLocalRoutes sets up all routes used for local authentication and 2FA.
+//
+// It includes endpoints for:
+//   - user registration
+//   - login with optional 2FA
+//   - 2FA setup and validation
+//   - regenerating backup codes
+//   - disabling 2FA
 func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
+	app.Post("/auth/register", handleRegister)
+	app.Post("/auth/login", handleLogin(cfg))
 
-	app.Post("/auth/register", func(c fiber.Ctx) error {
-		var body struct {
-			Username    string `json:"username"`
-			Password    string `json:"password"`
-			Email       string `json:"email"`
-			PhoneNumber string `json:"phone_number"`
-			FirstName   string `json:"first_name"`
-			MiddleName  string `json:"middle_name"`
-			LastName    string `json:"last_name"`
-			Address     string `json:"address"`
-		}
-		if err := c.Bind().Body(&body); err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "invalid input")
-		}
+	secure := app.Group("/secure", middleware.RequireAuth(cfg))
 
-		hash, err := auth.HashPassword(body.Password)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "failed to hash password")
-		}
+	secure.Post("/auth/2fa/setup", handle2FASetup(cfg))
+	secure.Post("/auth/2fa/verify", handle2FAVerify(cfg))
+	secure.Post("/auth/2fa/disable", handle2FADisable(cfg))
+	secure.Post("/auth/backup-codes/regenerate", handleBackupCodes(cfg))
+}
 
-		user := db.User{
-			Username:     body.Username,
-			Email:        body.Email,
-			PhoneNumber:  body.PhoneNumber,
-			FirstName:    body.FirstName,
-			MiddleName:   body.MiddleName,
-			LastName:     body.LastName,
-			Address:      body.Address,
-			PasswordHash: hash,
-			IsActive:     true,
-		}
+// handleRegister handles user registration.
+//
+// It accepts a JSON body with required user information, hashes the password,
+// stores the user in the database, and returns a success response.
+func handleRegister(c fiber.Ctx) error {
+	var body struct {
+		Username    string `json:"username"`
+		Password    string `json:"password"`
+		Email       string `json:"email"`
+		PhoneNumber string `json:"phone_number"`
+		FirstName   string `json:"first_name"`
+		MiddleName  string `json:"middle_name"`
+		LastName    string `json:"last_name"`
+		Address     string `json:"address"`
+	}
+	if err := c.Bind().Body(&body); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid input")
+	}
 
-		if err := db.DB.Create(&user).Error; err != nil {
-			return fiber.NewError(fiber.StatusConflict, "user exists or DB error")
-		}
+	hash, err := auth.HashPassword(body.Password)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "failed to hash password")
+	}
 
-		return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "user registered"})
-	})
+	user := db.User{
+		Username:     body.Username,
+		Email:        body.Email,
+		PhoneNumber:  body.PhoneNumber,
+		FirstName:    body.FirstName,
+		MiddleName:   body.MiddleName,
+		LastName:     body.LastName,
+		Address:      body.Address,
+		PasswordHash: hash,
+		IsActive:     true,
+	}
 
-	app.Post("/auth/login", func(c fiber.Ctx) error {
+	if err := db.DB.Create(&user).Error; err != nil {
+		return fiber.NewError(fiber.StatusConflict, "user exists or DB error")
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "user registered"})
+}
+
+// handleLogin returns a Fiber handler that performs user login,
+// validates credentials, and returns either a 2FA challenge or a JWT.
+func handleLogin(cfg *config.Config) fiber.Handler {
+	return func(c fiber.Ctx) error {
 		var body struct {
 			Username   string `json:"username"`
 			Password   string `json:"password"`
@@ -67,14 +94,11 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 			return fiber.NewError(fiber.StatusUnauthorized, "user not found")
 		}
 
-		// Always check password first
 		if !auth.CheckPasswordHash(body.Password, user.PasswordHash) {
 			return fiber.NewError(fiber.StatusUnauthorized, "invalid credentials")
 		}
 
-		// ✅ 2FA required but no backup code → return token + status 202
 		if user.Requires2FA && body.BackupCode == "" {
-			// Return short-lived token to allow /secure/auth/2fa/verify
 			totpToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 				"sub":  user.ID,
 				"name": user.Username,
@@ -90,7 +114,6 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 			})
 		}
 
-		// ✅ 2FA + backup code handling
 		if user.Requires2FA && body.BackupCode != "" {
 			valid := false
 			for _, bc := range user.BackupCodes {
@@ -106,7 +129,6 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 			}
 		}
 
-		// ✅ Issue regular token (24h)
 		finalToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"sub":  user.ID,
 			"name": user.Username,
@@ -118,25 +140,13 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 		}
 
 		return c.JSON(fiber.Map{"token": signed})
-	})
+	}
+}
 
-	secure := app.Group("/secure", middleware.RequireAuth(cfg))
-
-	secure.Post("/auth/backup-codes/regenerate", func(c fiber.Ctx) error {
-		user := c.Locals("user").(db.User)
-
-		codes, hashes, err := auth.GenerateBackupCodes(8)
-		if err != nil {
-			return fiber.NewError(500, "generation failed")
-		}
-		db.DB.Where("user_id = ?", user.ID).Delete(&db.BackupCode{})
-		for _, h := range hashes {
-			db.DB.Create(&db.BackupCode{UserID: user.ID, CodeHash: h})
-		}
-		return c.JSON(fiber.Map{"backup_codes": codes})
-	})
-
-	secure.Post("/auth/2fa/setup", func(c fiber.Ctx) error {
+// handle2FASetup returns a handler that creates and stores a TOTP secret,
+// and returns it to the client for use in authenticator apps.
+func handle2FASetup(cfg *config.Config) fiber.Handler {
+	return func(c fiber.Ctx) error {
 		user := c.Locals("user").(db.User)
 
 		key, qrURL, err := auth.GenerateTOTPSecret(user.Username, "goIAM")
@@ -153,9 +163,13 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 			"otpauth_url": qrURL,
 			"secret":      key.Secret(),
 		})
-	})
+	}
+}
 
-	secure.Post("/auth/2fa/verify", func(c fiber.Ctx) error {
+// handle2FAVerify verifies the TOTP code and enables 2FA for the user,
+// issuing a new long-lived token on success.
+func handle2FAVerify(cfg *config.Config) fiber.Handler {
+	return func(c fiber.Ctx) error {
 		user := c.Locals("user").(db.User)
 
 		var body struct {
@@ -168,24 +182,21 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 		if user.TOTPSecret == "" {
 			return fiber.NewError(fiber.StatusBadRequest, "2FA not initialized")
 		}
-
 		if !auth.ValidateTOTP(user.TOTPSecret, body.Code) {
 			return fiber.NewError(fiber.StatusForbidden, "invalid TOTP code")
 		}
 
 		user.Requires2FA = true
-		user.TwoFAVerified = true // runtime only
+		user.TwoFAVerified = true
 		if err := db.DB.Save(&user).Error; err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to update user")
 		}
 
-		// Generate final JWT token
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"sub":  user.ID,
 			"name": user.Username,
 			"exp":  time.Now().Add(24 * time.Hour).Unix(),
 		})
-
 		signed, err := token.SignedString([]byte(cfg.JWTSecret))
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to create token")
@@ -195,48 +206,28 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 			"message": "2FA verified and enabled",
 			"token":   signed,
 		})
+	}
+}
 
-	})
-
-	secure.Post("/auth/2fa/setup", func(c fiber.Ctx) error {
-		user := c.Locals("user").(db.User)
-
-		key, qrURL, err := auth.GenerateTOTPSecret(user.Username, "goIAM")
-		if err != nil {
-			return fiber.NewError(500, "failed to generate TOTP secret")
-		}
-
-		// Save to DB
-		user.TOTPSecret = key.Secret()
-		if err := db.DB.Save(&user).Error; err != nil {
-			return fiber.NewError(500, "failed to save 2FA secret")
-		}
-
-		return c.JSON(fiber.Map{
-			"otpauth_url": qrURL,
-			"secret":      key.Secret(), // show only once
-		})
-	})
-
-	secure.Post("/auth/2fa/disable", func(c fiber.Ctx) error {
+// handle2FADisable disables TOTP-based 2FA and deletes all backup codes.
+func handle2FADisable(cfg *config.Config) fiber.Handler {
+	return func(c fiber.Ctx) error {
 		user := c.Locals("user").(db.User)
 
 		var body struct {
-			Code     string `json:"code"`     // optional
-			Password string `json:"password"` // optional
+			Code     string `json:"code"`
+			Password string `json:"password"`
 		}
 		if err := c.Bind().Body(&body); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid input")
 		}
 
-		// OPTIONAL: require recent password or valid code
 		if user.TOTPSecret != "" && body.Code != "" {
 			if !auth.ValidateTOTP(user.TOTPSecret, body.Code) {
 				return fiber.NewError(fiber.StatusForbidden, "invalid TOTP code")
 			}
 		}
 
-		// Disable 2FA
 		user.TOTPSecret = ""
 		user.Requires2FA = false
 		db.DB.Where("user_id = ?", user.ID).Delete(&db.BackupCode{})
@@ -246,6 +237,25 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 		}
 
 		return c.JSON(fiber.Map{"message": "2FA disabled"})
-	})
+	}
+}
 
+// handleBackupCodes regenerates a new set of backup codes for the user
+// and invalidates all previously issued codes.
+func handleBackupCodes(cfg *config.Config) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		user := c.Locals("user").(db.User)
+
+		codes, hashes, err := auth.GenerateBackupCodes(8)
+		if err != nil {
+			return fiber.NewError(500, "generation failed")
+		}
+
+		db.DB.Where("user_id = ?", user.ID).Delete(&db.BackupCode{})
+		for _, h := range hashes {
+			db.DB.Create(&db.BackupCode{UserID: user.ID, CodeHash: h})
+		}
+
+		return c.JSON(fiber.Map{"backup_codes": codes})
+	}
 }

@@ -1,23 +1,37 @@
+# Server port to listen on
 port: 8080
 
+# JWT signing key used for issuing and verifying tokens
 jwt_secret: "super-secret-key"
 
+# Enable debug logging
 debug: true
+
+# Authentication provider to use: currently only "local" is supported
 auth_provider: local
 
-# Supported values: sqlite, mysql, postgres, sqlserver, clickhouse
+# === Database Configuration ===
+
+# Select database driver (options: sqlite, mysql, postgres, sqlserver, clickhouse)
 database: "sqlite"
-database_dsn: "/home/javad/goIAM/iam.db"
 
+# Connection string / DSN (Data Source Name) for the database
+database_dsn: "/home/javad/goIAM/iam.db"  # For SQLite, this is a file path
 
-#database: "postgres"
-#database_dsn: "host=localhost user=postgres password=secret dbname=iamdb port=5432 sslmode=disable"
+# --- Examples for other databases (commented out) ---
 
-#database: "mysql"
-#database_dsn: "user:password@tcp(localhost:3306)/iamdb?charset=utf8mb4&parseTime=True&loc=Local"
+# PostgreSQL example:
+# database: "postgres"
+# database_dsn: "host=localhost user=postgres password=secret dbname=iamdb port=5432 sslmode=disable"
 
-#database: "sqlserver"
-#database_dsn: "sqlserver://user:password@localhost:1433?database=iamdb"
+# MySQL example:
+# database: "mysql"
+# database_dsn: "user:password@tcp(localhost:3306)/iamdb?charset=utf8mb4&parseTime=True&loc=Local"
 
-#database: "clickhouse"
-#database_dsn: "tcp://localhost:9000?username=default&password=&database=iamdb"
+# SQL Server example:
+# database: "sqlserver"
+# database_dsn: "sqlserver://user:password@localhost:1433?database=iamdb"
+
+# ClickHouse example:
+# database: "clickhouse"
+# database_dsn: "tcp://localhost:9000?username=default&password=&database=iamdb"

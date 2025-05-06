@@ -4,24 +4,26 @@ A command-line interface for interacting with the [goIAM](https://github.com/jav
 
 ---
 
-## 🔧 Features
+## Features
 
-- Register new users
-- Login and receive JWT
-- Setup Two-Factor Authentication (2FA) with TOTP
-- Verify TOTP code
-- Disable 2FA
-- Regenerate one-time backup codes
-- Supports QR code output using `qrencode`
+- Register new users with full details (email, phone, address, etc.)
+- Login with optional TOTP-based 2FA support
+- Interactive and non-interactive login flows (piped input or terminal prompts)
+- Setup Two-Factor Authentication (2FA) with secret and QR generation
+- Verify 2FA codes manually or during login flow
+- Disable 2FA with TOTP confirmation
+- Regenerate one-time backup codes for account recovery
+- Uses standard Go + Cobra structure
+- QR terminal output using `qrencode` (optional)
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 
 - Go 1.20+
-- (Optional) `qrencode` for displaying QR codes in terminal:
+- (Optional) `qrencode` for QR code output:
   ```bash
   sudo apt install qrencode  # Debian/Ubuntu
   brew install qrencode      # macOS
@@ -44,25 +46,34 @@ go build -o goiam-cli main.go
 
 ---
 
-## ⚙️ Global Flags
+## Global Flags
 
 - `--api`: Base URL of goIAM API (default: `http://localhost:8080`)
 - `--token`: JWT token for authenticated routes
 
 ---
 
-## 🛠 Commands
+## Commands
 
 ### Register a new user
 
 ```bash
-go run main.go register --username john --password secret123 --email john@example.com --first John --last Doe
+go run main.go register --username john --email john@example.com --first John --last Doe
 ```
 
-### Login and get JWT
+You will be prompted for password securely.
+
+### Login with 2FA support
 
 ```bash
-go run main.go login --username john --password secret123
+go run main.go login --username john
+```
+
+You will be prompted for password and 2FA code (if enabled).
+
+Piped password input also works:
+```bash
+echo "mypassword" | go run main.go login -u john
 ```
 
 ### Setup 2FA (QR + Secret)
@@ -71,7 +82,7 @@ go run main.go login --username john --password secret123
 go run main.go --token=$JWT 2fa-setup
 ```
 
-### Verify TOTP code
+### Verify 2FA code
 
 ```bash
 go run main.go --token=$JWT 2fa-verify --code=123456
@@ -91,23 +102,23 @@ go run main.go --token=$JWT backup-codes
 
 ---
 
-## 📦 Folder Structure
+## Folder Structure
 
-```bash
-cli/
-├── main.go             # Entry point
+```
+cmd/cli/
+├── main.go             # CLI entry point
 └── cmds/
-    ├── registry.go     # Register commands
-    ├── register.go     # `register` command
-    ├── login.go        # `login` command
-    ├── 2fa_setup.go    # `2fa-setup` command
-    ├── 2fa_verify.go   # `2fa-verify` command
-    ├── 2fa_disable.go  # `2fa-disable` command
-    └── backup_codes.go # `backup-codes` command
+    ├── registry.go     # Registers CLI subcommands
+    ├── register.go     # User registration
+    ├── login.go        # Login and 2FA prompt
+    ├── 2fa_setup.go    # Setup TOTP 2FA
+    ├── 2fa_verify.go   # Verify 2FA code
+    ├── 2fa_disable.go  # Disable 2FA
+    └── backup_codes.go # Regenerate backup codes
 ```
 
 ---
 
-## 📝 License
+## License
 
-MIT © [Javad Mohebi](https://github.com/javadmohebbi)
+[Javad Mohebi](https://github.com/javadmohebbi)

@@ -16,7 +16,7 @@ auth_provider: local
 database: "sqlite"
 
 # Connection string / DSN (Data Source Name) for the database
-database_dsn: "/home/javad/goIAM/iam.db"  # For SQLite, this is a file path
+database_dsn: "./iam.db"  # For SQLite, this is a file path
 
 # --- Examples for other databases (commented out) ---
 

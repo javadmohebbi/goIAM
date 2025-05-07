@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -92,8 +93,14 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 				}
 			}
 
+			orgUint, err := strconv.ParseUint(orgID, 10, 32)
+			if err != nil {
+				fmt.Println("Invalid organization ID:", err)
+				return
+			}
+
 			// Prepare registration payload
-			data := map[string]string{
+			data := map[string]any{
 				"username":        username,
 				"password":        password,
 				"email":           email,
@@ -102,7 +109,7 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 				"middle_name":     middle,
 				"last_name":       last,
 				"address":         address,
-				"organization_id": orgID,
+				"organization_id": uint(orgUint),
 			}
 
 			post(apiURL, "/auth/register", data, "")
@@ -134,7 +141,7 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 //   - path: Endpoint path (e.g., /auth/register)
 //   - data: Key-value pairs to be marshaled into JSON
 //   - token: Optional Bearer token for Authorization header
-func post(apiURL *string, path string, data map[string]string, token string) {
+func post(apiURL *string, path string, data map[string]any, token string) {
 	body, _ := json.Marshal(data)
 	req, _ := http.NewRequest("POST", *apiURL+path, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")

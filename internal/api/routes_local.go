@@ -3,6 +3,7 @@
 package api
 
 import (
+	"log"
 	"strings"
 	"time"
 
@@ -44,7 +45,7 @@ type handleRegisterInput struct {
 	MiddleName     string `json:"middle_name"`     // optional
 	LastName       string `json:"last_name"`       // optional
 	Address        string `json:"address"`         // optional
-	OrganizationID *uint  `json:"organization_id"` // optional, use default if not set
+	OrganizationID uint   `json:"organization_id"` // optional, use default if not set
 }
 
 // handleRegister handles user registration for a specific organization.
@@ -60,6 +61,7 @@ func handleRegister(c fiber.Ctx) error {
 	// Parse and bind JSON input to struct
 	var body handleRegisterInput
 	if err := c.Bind().Body(&body); err != nil {
+		log.Println(body)
 		return fiber.NewError(fiber.StatusBadRequest, "invalid input")
 	}
 
@@ -70,10 +72,10 @@ func handleRegister(c fiber.Ctx) error {
 
 	// Verify that the organization exists
 	var org db.Organization
-	if body.OrganizationID == nil {
+	if body.OrganizationID == 0 {
 		return fiber.NewError(fiber.StatusBadRequest, "organization_id is required")
 	}
-	if err := db.DB.First(&org, *body.OrganizationID).Error; err != nil {
+	if err := db.DB.First(&org, body.OrganizationID).Error; err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "specified organization not found")
 	}
 

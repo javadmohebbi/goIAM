@@ -44,7 +44,6 @@ func (a *API) handleRegisterLocal(c fiber.Ctx) error {
 	// Parse and bind JSON input to struct
 	var body handleRegisterInput
 	if err := c.Bind().Body(&body); err != nil {
-		log.Println(body)
 		return fiber.NewError(fiber.StatusBadRequest, "invalid input")
 	}
 

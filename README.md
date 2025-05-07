@@ -118,4 +118,4 @@ curl -X POST http://localhost:8080/secure/auth/2fa/disable -H "Authorization: Be
 
 ## 📄 License
 
-<!-- MIT License © [Javad Mohebi](https://github.com/javadmohebbi) -->
+© [Javad Mohebi](https://github.com/javadmohebbi)

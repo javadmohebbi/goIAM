@@ -3,6 +3,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -26,9 +27,10 @@ type Config struct {
 }
 
 // LoadConfig loads a YAML configuration file from the specified path.
+// Environment variables take precedence over values from the config file.
 //
 // It reads the file contents, unmarshals the YAML into a Config struct,
-// and returns a pointer to the Config instance or an error if loading fails.
+// and overrides applicable fields using environment variables if set.
 //
 // Parameters:
 //   - path: the file path to the YAML config file
@@ -37,13 +39,42 @@ type Config struct {
 //   - *Config: pointer to the loaded Config struct
 //   - error: non-nil if reading or parsing fails
 func LoadConfig(path string) (*Config, error) {
+	if envPath := os.Getenv("CONFIG_PATH"); envPath != "" {
+		// Allow overriding the config path using CONFIG_PATH environment variable
+		path = envPath
+	}
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
+
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
+
+	if portStr := os.Getenv("PORT"); portStr != "" {
+		// Override YAML port with environment variable
+		if port, err := strconv.Atoi(portStr); err == nil {
+			cfg.Port = port
+		}
+	}
+
+	if db := os.Getenv("DATABASE"); db != "" {
+		// Override database engine from environment
+		cfg.Database = db
+	}
+
+	if dsn := os.Getenv("DATABASE_DSN"); dsn != "" {
+		// Override database DSN from environment
+		cfg.DatabaseDSN = dsn
+	}
+
+	if provider := os.Getenv("AUTH_PROVIDER"); provider != "" {
+		// Override auth provider from environment
+		cfg.AuthProvider = provider
+	}
+
 	return &cfg, nil
 }

@@ -14,8 +14,8 @@ import (
 	"gorm.io/driver/sqlserver"
 )
 
-// DB is a global variable representing the initialized GORM database instance.
-// It is set by the Init function.
+// // DB is a global variable representing the initialized GORM database instance.
+// // It is set by the Init function.
 var DB *gorm.DB
 
 // Init sets up the global DB connection using the provided database engine and DSN.
@@ -30,7 +30,7 @@ var DB *gorm.DB
 //
 // Logs fatal errors if the engine is unsupported, the connection fails,
 // or if model migration fails.
-func Init(engine, dsn string) {
+func Init(engine, dsn string) *gorm.DB {
 	var dialector gorm.Dialector
 
 	switch engine {
@@ -68,6 +68,9 @@ func Init(engine, dsn string) {
 	); err != nil {
 		log.Fatalf("auto migration failed: %v", err)
 	}
+
+	// will use DB in the db package only and return value in other packages
+	return DB
 
 	// Create default organization if none exist
 	// var count int64

@@ -21,7 +21,7 @@ type handleLoginInput struct {
 func (a *API) handleLogin() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		var org db.Organization
-		if err := db.DB.First(&org).Error; err != nil {
+		if err := a.iamDB.First(&org).Error; err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "default organization not found")
 		}
 
@@ -31,7 +31,7 @@ func (a *API) handleLogin() fiber.Handler {
 		}
 
 		var user db.User
-		if err := db.DB.Preload("BackupCodes").Where("username = ? AND organization_id = ?", body.Username, org.ID).First(&user).Error; err != nil {
+		if err := a.iamDB.Preload("BackupCodes").Where("username = ? AND organization_id = ?", body.Username, org.ID).First(&user).Error; err != nil {
 			return fiber.NewError(fiber.StatusUnauthorized, "user not found")
 		}
 
@@ -61,7 +61,7 @@ func (a *API) handleLogin() fiber.Handler {
 				if !bc.Used && auth.CheckBackupCode(body.BackupCode, bc.CodeHash) {
 					valid = true
 					bc.Used = true
-					db.DB.Save(&bc)
+					a.iamDB.Save(&bc)
 					break
 				}
 			}

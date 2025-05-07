@@ -26,7 +26,7 @@ func (a *API) handle2FASetup() fiber.Handler {
 		}
 
 		user.TOTPSecret = key.Secret()
-		if err := db.DB.Save(&user).Error; err != nil {
+		if err := a.iamDB.Save(&user).Error; err != nil {
 			return fiber.NewError(500, "failed to save 2FA secret")
 		}
 
@@ -57,7 +57,7 @@ func (a *API) handle2FAVerify() fiber.Handler {
 
 		user.Requires2FA = true
 		user.TwoFAVerified = true
-		if err := db.DB.Save(&user).Error; err != nil {
+		if err := a.iamDB.Save(&user).Error; err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to update user")
 		}
 
@@ -102,9 +102,9 @@ func (a *API) handle2FADisable() fiber.Handler {
 
 		user.TOTPSecret = ""
 		user.Requires2FA = false
-		db.DB.Where("user_id = ?", user.ID).Delete(&db.BackupCode{})
+		a.iamDB.Where("user_id = ?", user.ID).Delete(&db.BackupCode{})
 
-		if err := db.DB.Save(&user).Error; err != nil {
+		if err := a.iamDB.Save(&user).Error; err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to disable 2FA")
 		}
 
@@ -123,9 +123,9 @@ func (a *API) handleBackupCodes() fiber.Handler {
 			return fiber.NewError(500, "generation failed")
 		}
 
-		db.DB.Where("user_id = ?", user.ID).Delete(&db.BackupCode{})
+		a.iamDB.Where("user_id = ?", user.ID).Delete(&db.BackupCode{})
 		for _, h := range hashes {
-			db.DB.Create(&db.BackupCode{UserID: user.ID, CodeHash: h})
+			a.iamDB.Create(&db.BackupCode{UserID: user.ID, CodeHash: h})
 		}
 
 		return c.JSON(fiber.Map{"backup_codes": codes})

@@ -19,7 +19,7 @@ func (a *API) RegisterLocalRoutes(app *fiber.App) {
 	app.Post("/auth/register", a.handleRegister)
 	app.Post("/auth/login", a.handleLogin())
 
-	secure := app.Group("/secure", middleware.RequireAuth(a.cfg))
+	secure := app.Group("/secure", middleware.RequireAuth(a.cfg, a.iamDB))
 
 	secure.Post("/auth/2fa/setup", a.handle2FASetup())
 	secure.Post("/auth/2fa/verify", a.handle2FAVerify())

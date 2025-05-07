@@ -72,7 +72,7 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 			}
 			// Ensure slug is unique
 			var existing db.Organization
-			if err := db.DB.Where("slug = ?", orgSlug).First(&existing).Error; err == nil {
+			if err := a.iamDB.Where("slug = ?", orgSlug).First(&existing).Error; err == nil {
 				orgSlug = orgSlug + "-" + uuid.New().String()[:4]
 			}
 		}
@@ -82,7 +82,7 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 			Slug:        orgSlug,
 			Description: "Created automatically during registration",
 		}
-		if err := db.DB.Create(&org).Error; err != nil {
+		if err := a.iamDB.Create(&org).Error; err != nil {
 			if strings.Contains(err.Error(), "UNIQUE constraint failed: organizations.name") {
 				return fiber.NewError(fiber.StatusConflict, "organization name already exists")
 			}
@@ -90,11 +90,11 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 		}
 
 		// Seed default policies into the new organization
-		if err := seeds.SeedDefaultPoliciesForOrg(org.ID, db.DB); err != nil {
+		if err := seeds.SeedDefaultPoliciesForOrg(org.ID, a.iamDB); err != nil {
 			log.Printf("failed to seed default policies: %v", err)
 		}
 	} else {
-		if err := db.DB.First(&org, body.OrganizationID).Error; err != nil {
+		if err := a.iamDB.First(&org, body.OrganizationID).Error; err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "specified organization not found")
 		}
 	}
@@ -119,28 +119,28 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 		OrganizationID: org.ID,
 	}
 
-	if err := db.DB.Create(&user).Error; err != nil {
+	if err := a.iamDB.Create(&user).Error; err != nil {
 		return fiber.NewError(fiber.StatusConflict, "user exists or DB error")
 	}
 
 	// Check how many users exist in this organization
 	var userCount int64
-	if err := db.DB.Model(&db.User{}).Where("organization_id = ?", org.ID).Count(&userCount).Error; err == nil {
+	if err := a.iamDB.Model(&db.User{}).Where("organization_id = ?", org.ID).Count(&userCount).Error; err == nil {
 		if userCount == 1 {
 			// First user gets FullAccess
 			var fullAccess db.Policy
-			if err := db.DB.
+			if err := a.iamDB.
 				Where("slug LIKE ? AND organization_id = ?", "full-access%", org.ID).
 				First(&fullAccess).Error; err == nil {
-				db.DB.Model(&user).Association("Policies").Append(&fullAccess)
+				a.iamDB.Model(&user).Association("Policies").Append(&fullAccess)
 			}
 		} else {
 			// Other users get SelfManage
 			var selfManage db.Policy
-			if err := db.DB.
+			if err := a.iamDB.
 				Where("slug LIKE ? AND organization_id = ?", "self-manage%", org.ID).
 				First(&selfManage).Error; err == nil {
-				db.DB.Model(&user).Association("Policies").Append(&selfManage)
+				a.iamDB.Model(&user).Association("Policies").Append(&selfManage)
 			}
 		}
 	}

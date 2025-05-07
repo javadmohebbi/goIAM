@@ -58,9 +58,10 @@ func Main() {
 	cfg.Debug = *debug
 
 	// Initialize database
-	db.Init(cfg.Database, cfg.DatabaseDSN)
+	// db.Init(cfg.Database, cfg.DatabaseDSN)
+	_db := db.Init(cfg.Database, cfg.DatabaseDSN)
 
-	_api := api.New(cfg)
+	_api := api.New(cfg, _db)
 
 	// Start API server
 	fmt.Printf("[goIAM] Starting on port %d with DB [%s]...\n", cfg.Port, cfg.Database)

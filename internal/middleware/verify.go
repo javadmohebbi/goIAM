@@ -8,12 +8,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/javadmohebbi/goIAM/internal/config"
 	"github.com/javadmohebbi/goIAM/internal/db"
+	"gorm.io/gorm"
 )
 
 // RequireAuth is a Fiber middleware that verifies the Authorization Bearer JWT token,
 // checks if the user exists, and enforces 2FA if required.
 // On success, it stores the `db.User` in c.Locals("user") for route handlers.
-func RequireAuth(cfg *config.Config) fiber.Handler {
+func RequireAuth(cfg *config.Config, iamDB *gorm.DB) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		// Extract bearer token
 		authHeader := c.Get("Authorization")
@@ -46,7 +47,7 @@ func RequireAuth(cfg *config.Config) fiber.Handler {
 
 		// Load user from DB
 		var user db.User
-		if err := db.DB.First(&user, uint(userID)).Error; err != nil {
+		if err := iamDB.First(&user, uint(userID)).Error; err != nil {
 			return fiber.NewError(fiber.StatusUnauthorized, "user not found")
 		}
 

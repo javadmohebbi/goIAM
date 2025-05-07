@@ -41,16 +41,14 @@ func (a *API) StartServer() error {
 			"status":        "ok",
 			"uptime":        time.Since(a.startTime).String(),
 			"go_version":    runtime.Version(),
-			"auth_provider": a.cfg.AuthProvider,
+			"auth_provider": a.cfg.AuthProviders,
 			"port":          a.cfg.Port,
 			"app":           a._app.Config(),
 		})
 	})
 
 	// Register routes depending on auth provider
-	if a.cfg.AuthProvider == "local" {
-		a.RegisterLocalRoutes(app)
-	}
+	a.registerRoutes(app)
 
 	// Start the server on the specified port
 	return app.Listen(

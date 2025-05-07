@@ -40,7 +40,7 @@ type handleRegisterInput struct {
 //   - Stores the user in the database
 //
 // Returns 201 on success, 400 for bad input, or 409 if a duplicate user exists.
-func (a *API) handleRegister(c fiber.Ctx) error {
+func (a *API) handleRegisterLocal(c fiber.Ctx) error {
 	// Parse and bind JSON input to struct
 	var body handleRegisterInput
 	if err := c.Bind().Body(&body); err != nil {

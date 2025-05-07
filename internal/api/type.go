@@ -1,6 +1,8 @@
 package api
 
 import (
+	"time"
+
 	"github.com/javadmohebbi/goIAM/internal/config"
 	"github.com/javadmohebbi/goIAM/internal/validation"
 )
@@ -11,6 +13,8 @@ import (
 type API struct {
 	cfg        *config.Config
 	validation *validation.Validation
+
+	startTime time.Time
 }
 
 // New returns a new instance of the API struct,

@@ -3,6 +3,8 @@ package api
 
 import (
 	"fmt"
+	"runtime"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -21,9 +23,17 @@ func (a *API) StartServer() error {
 	// Initialize Fiber app instance
 	app := fiber.New()
 
+	a.startTime = time.Now()
+
 	// Simple health check endpoint
-	app.Get("/health", func(c fiber.Ctx) error {
-		return c.SendString("healthy")
+	app.Get("/echo", func(c fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status":        "ok",
+			"uptime":        time.Since(a.startTime).String(),
+			"go_version":    runtime.Version(),
+			"auth_provider": a.cfg.AuthProvider,
+			"port":          a.cfg.Port,
+		})
 	})
 
 	// Register routes depending on auth provider

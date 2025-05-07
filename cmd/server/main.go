@@ -1,4 +1,4 @@
-// Package server starts the goIAM HTTP API service.
+// Package main starts the goIAM HTTP API service.
 package server
 
 import (
@@ -11,20 +11,39 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-// Main is the entry point for starting the goIAM API server.
-// It parses command-line flags, loads configuration from a YAML file,
-// initializes the database, and starts the HTTP server.
+// main is the entry point for launching the goIAM API server.
+//
+// It performs the following tasks:
+//  1. Parses command-line flags: config path, HTTP port, and debug mode.
+//  2. Loads configuration from a YAML file (with optional override via IAM_CONFIG_PATH).
+//  3. Applies environment variable overrides for configuration values.
+//  4. Applies runtime overrides from CLI flags (port, debug).
+//  5. Initializes the database connection using GORM.
+//  6. Starts the HTTP server with the loaded configuration.
+//
+// Environment Variables:
+//   - IAM_CONFIG_PATH: override config file location
+//   - IAM_PORT: override server port
+//   - IAM_DATABASE: override database engine
+//   - IAM_DATABASE_DSN: override connection string
+//   - IAM_AUTH_PROVIDER: override authentication providers (comma-separated)
 //
 // Flags:
 //
 //	-c, --config: path to the configuration YAML file (default: "config.yaml")
+//	             (can be overridden by IAM_CONFIG_PATH env var)
 //	-p, --port: port to bind the HTTP server to (default: 8080)
+//	           (can be overridden by IAM_PORT env var)
 //	-d, --debug: enable verbose debug output (default: false)
 func Main() {
 	// Parse command-line flags
-	configPath := flag.StringP("config", "c", "config.yaml", "Path to YAML config")
-	port := flag.IntP("port", "p", 8080, "Port to run the HTTP server on")
-	debug := flag.BoolP("debug", "d", false, "Enable debug output")
+	// These can be overridden by environment variables:
+	//   - IAM_CONFIG_PATH for configPath
+	//   - IAM_PORT for port
+	//   - IAM_DEBUG for debug (not implemented yet via env)
+	configPath := flag.StringP("config", "c", "config.yaml", "Path to YAML config (overridable via IAM_CONFIG_PATH)")
+	port := flag.IntP("port", "p", 8080, "Port to run the HTTP server on (overridable via IAM_PORT)")
+	debug := flag.BoolP("debug", "d", false, "Enable debug output (flag only)")
 	flag.Parse()
 
 	// Load configuration

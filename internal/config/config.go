@@ -39,8 +39,8 @@ type Config struct {
 //   - *Config: pointer to the loaded Config struct
 //   - error: non-nil if reading or parsing fails
 func LoadConfig(path string) (*Config, error) {
-	if envPath := os.Getenv("CONFIG_PATH"); envPath != "" {
-		// Allow overriding the config path using CONFIG_PATH environment variable
+	if envPath := os.Getenv("IAM_CONFIG_PATH"); envPath != "" {
+		// Allow overriding the config path using IAM_CONFIG_PATH environment variable
 		path = envPath
 	}
 
@@ -54,25 +54,25 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	if portStr := os.Getenv("PORT"); portStr != "" {
-		// Override YAML port with environment variable
+	if portStr := os.Getenv("IAM_PORT"); portStr != "" {
+		// Override YAML port with environment variable IAM_PORT
 		if port, err := strconv.Atoi(portStr); err == nil {
 			cfg.Port = port
 		}
 	}
 
-	if db := os.Getenv("DATABASE"); db != "" {
-		// Override database engine from environment
+	if db := os.Getenv("IAM_DATABASE"); db != "" {
+		// Override database engine from environment IAM_DATABASE
 		cfg.Database = db
 	}
 
-	if dsn := os.Getenv("DATABASE_DSN"); dsn != "" {
-		// Override database DSN from environment
+	if dsn := os.Getenv("IAM_DATABASE_DSN"); dsn != "" {
+		// Override database DSN from environment IAM_DATABASE_DSN
 		cfg.DatabaseDSN = dsn
 	}
 
-	if provider := os.Getenv("AUTH_PROVIDER"); provider != "" {
-		// Override auth provider from environment
+	if provider := os.Getenv("IAM_AUTH_PROVIDER"); provider != "" {
+		// Override auth provider from environment IAM_AUTH_PROVIDER
 		cfg.AuthProvider = provider
 	}
 

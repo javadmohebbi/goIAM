@@ -54,7 +54,9 @@ func RequireAuth(cfg *config.Config, iamDB *gorm.DB) fiber.Handler {
 		// Check if 2FA is required but not verified
 		// Skip 2FA check only for /2fa/verify and /2fa/setup
 		path := c.Path()
-		verified := claims["2fa"] == true
+		// verified := claims["2fa"] == true
+		// A JWT with "2fa": true means user already passed 2FA
+		verified, _ := claims["2fa"].(bool)
 
 		if user.Requires2FA && !verified &&
 			path != "/secure/auth/2fa/verify" && path != "/secure/auth/2fa/setup" {

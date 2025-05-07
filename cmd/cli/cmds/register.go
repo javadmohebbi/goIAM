@@ -3,11 +3,8 @@ package cmds
 
 import (
 	"bufio"
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -125,7 +122,9 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 			data["last_name"] = last
 			data["address"] = address
 
-			post(apiURL, "/auth/register", data, "")
+			res, _ := post(apiURL, "/auth/register", data, "")
+			result, _ := io.ReadAll(res.Body)
+			fmt.Println(string(result))
 		},
 	}
 
@@ -147,30 +146,4 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 	// cmd.MarkFlagRequired("organization-id")
 
 	return cmd
-}
-
-// post sends a JSON-encoded POST request to the goIAM API.
-//
-// Parameters:
-//   - apiURL: Pointer to base API URL (e.g., https://api.example.com)
-//   - path: Endpoint path (e.g., /auth/register)
-//   - data: Key-value pairs to be marshaled into JSON
-//   - token: Optional Bearer token for Authorization header
-func post(apiURL *string, path string, data map[string]any, token string) {
-	body, _ := json.Marshal(data)
-	req, _ := http.NewRequest("POST", *apiURL+path, bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Println("Request failed:", err)
-		return
-	}
-	defer res.Body.Close()
-
-	result, _ := io.ReadAll(res.Body)
-	fmt.Println(string(result))
 }

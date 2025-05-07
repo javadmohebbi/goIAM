@@ -3,7 +3,6 @@ package cmds
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -56,14 +55,20 @@ func LoginCmd(apiURL *string) *cobra.Command {
 			}
 
 			// Construct login payload
-			payload := map[string]string{
+			payload := map[string]any{
 				"username": username,
 				"password": password,
 			}
-			body, _ := json.Marshal(payload)
+			// body, _ := json.Marshal(payload)
 
 			// Perform login request
-			res, err := http.Post(*apiURL+"/auth/login", "application/json", bytes.NewBuffer(body))
+			// res, err := http.Post(*apiURL+"/auth/login", "application/json", bytes.NewBuffer(body))
+			res, err := post(
+				apiURL,
+				"/auth/login",
+				payload,
+				"",
+			)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
@@ -75,7 +80,6 @@ func LoginCmd(apiURL *string) *cobra.Command {
 			// If 2FA is required, the API responds with 202 and a temporary token
 			if res.StatusCode == http.StatusAccepted {
 				fmt.Println("2FA required.")
-
 				unverifiedToken := extractToken(output)
 				if unverifiedToken == "" {
 					fmt.Println("Could not extract token from login response.")
@@ -96,15 +100,24 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					codeInput, _ := reader.ReadString('\n')
 					codeInput = strings.TrimSpace(codeInput)
 
-					verifyBody := map[string]string{"code": codeInput}
-					vbody, _ := json.Marshal(verifyBody)
+					verifyBody := map[string]any{"code": codeInput}
+					// vbody, _ := json.Marshal(verifyBody)
 
 					// Send 2FA verification request
-					req, _ := http.NewRequest("POST", *apiURL+"/secure/auth/2fa/verify", bytes.NewBuffer(vbody))
-					req.Header.Set("Authorization", "Bearer "+unverifiedToken)
-					req.Header.Set("Content-Type", "application/json")
+					// req, _ := http.NewRequest("POST", *apiURL+"/secure/auth/2fa/verify", bytes.NewBuffer(vbody))
+					// req.Header.Set("Authorization", "Bearer "+unverifiedToken)
+					// req.Header.Set("Content-Type", "application/json")
 
-					verifyRes, err := http.DefaultClient.Do(req)
+					// verifyRes, err := http.DefaultClient.Do(req)
+					verifyRes, err := post(
+						apiURL,
+						"/secure/auth/2fa/verify",
+						verifyBody,
+						"",
+						map[string]string{
+							"Authorization": "Bearer " + unverifiedToken,
+						},
+					)
 					if err != nil {
 						fmt.Println("Verification request error:", err)
 						return
@@ -117,7 +130,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 						fmt.Println("2FA verified.")
 						token := extractToken(vout)
 						if token != "" {
-							fmt.Println("Token:", token)
+							fmt.Printf("\n{\"token\": \"%s\"}\n", token)
 						} else {
 							fmt.Println(string(vout))
 						}

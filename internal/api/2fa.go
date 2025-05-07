@@ -64,6 +64,7 @@ func (a *API) handle2FAVerify() fiber.Handler {
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"sub":  user.ID,
 			"name": user.Username,
+			"2fa":  true, // tells middleware that 2FA is verified
 			"exp":  time.Now().Add(24 * time.Hour).Unix(),
 		})
 		signed, err := token.SignedString([]byte(a.cfg.JWTSecret))

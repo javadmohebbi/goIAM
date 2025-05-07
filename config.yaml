@@ -35,3 +35,15 @@ database_dsn: "/home/javad/goIAM/iam.db"  # For SQLite, this is a file path
 # ClickHouse example:
 # database: "clickhouse"
 # database_dsn: "tcp://localhost:9000?username=default&password=&database=iamdb"
+
+# === Validation Configuration ===
+
+# Configure validation rules using regex patterns or numeric limits.
+# These are optional and have reasonable defaults if omitted.
+
+# validation:
+#   email_regex: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"            # Simple RFC-like email format
+#   phone_regex: "^\\+?[0-9]{7,15}$"                         # E.164 format or local digits
+#   password_regex: "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*#?&]{6,}$"  # Letters + numbers
+#   website_regex: "^https?://[\\w\\-\\.]+\\.\\w+"           # Basic http/https URL
+#   password_min_length: 6                                   # Minimum password length

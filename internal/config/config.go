@@ -18,12 +18,21 @@ import (
 //   - AuthProvider: the authentication provider ("local", "ldap", etc.)
 //   - JWTSecret: the secret key used for signing JWT tokens
 type Config struct {
-	Port         int    `yaml:"port"`
-	Debug        bool   `yaml:"debug"`
-	Database     string `yaml:"database"`      // "sqlite", "postgres", "mysql", etc.
-	DatabaseDSN  string `yaml:"database_dsn"`  // connection string for the database
-	AuthProvider string `yaml:"auth_provider"` // "local", "ldap", etc.
-	JWTSecret    string `yaml:"jwt_secret"`    // secret for JWT token signing
+	Port         int              `yaml:"port"`
+	Debug        bool             `yaml:"debug"`
+	Database     string           `yaml:"database"`      // "sqlite", "postgres", "mysql", etc.
+	DatabaseDSN  string           `yaml:"database_dsn"`  // connection string for the database
+	AuthProvider string           `yaml:"auth_provider"` // "local", "ldap", etc.
+	JWTSecret    string           `yaml:"jwt_secret"`    // secret for JWT token signing
+	Validation   ValidationConfig `yaml:"validation"`
+}
+
+type ValidationConfig struct {
+	EmailRegex        string `yaml:"email_regex"`
+	PhoneRegex        string `yaml:"phone_regex"`
+	PasswordRegex     string `yaml:"password_regex"`
+	WebsiteRegex      string `yaml:"website_regex"`
+	PasswordMinLength int    `yaml:"password_min_length"`
 }
 
 // LoadConfig loads a YAML configuration file from the specified path.
@@ -52,6 +61,23 @@ func LoadConfig(path string) (*Config, error) {
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
+	}
+
+	// Apply default validation config if not set
+	if cfg.Validation.EmailRegex == "" {
+		cfg.Validation.EmailRegex = `^[^@\s]+@[^@\s]+\.[^@\s]+$`
+	}
+	if cfg.Validation.PhoneRegex == "" {
+		cfg.Validation.PhoneRegex = `^\+?[0-9]{7,15}$`
+	}
+	if cfg.Validation.PasswordRegex == "" {
+		cfg.Validation.PasswordRegex = `^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{6,}$`
+	}
+	if cfg.Validation.WebsiteRegex == "" {
+		cfg.Validation.WebsiteRegex = `^https?://[\w\-\.]+\.\w+`
+	}
+	if cfg.Validation.PasswordMinLength == 0 {
+		cfg.Validation.PasswordMinLength = 6
 	}
 
 	if portStr := os.Getenv("IAM_PORT"); portStr != "" {

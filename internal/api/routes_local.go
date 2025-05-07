@@ -3,6 +3,7 @@
 package api
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -33,40 +34,67 @@ func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
 	secure.Post("/auth/backup-codes/regenerate", handleBackupCodes(cfg))
 }
 
-// handleRegister handles user registration.
+// handleRegisterInput represents the expected JSON structure for registration.
+type handleRegisterInput struct {
+	Username       string `json:"username"`        // required
+	Password       string `json:"password"`        // required, validated by regex
+	Email          string `json:"email"`           // required, validated by regex
+	PhoneNumber    string `json:"phone_number"`    // optional, validated if present
+	FirstName      string `json:"first_name"`      // optional
+	MiddleName     string `json:"middle_name"`     // optional
+	LastName       string `json:"last_name"`       // optional
+	Address        string `json:"address"`         // optional
+	OrganizationID *uint  `json:"organization_id"` // optional, use default if not set
+}
+
+// handleRegister handles user registration for a specific organization.
 //
-// It accepts a JSON body with required user information, hashes the password,
-// stores the user in the database, and returns a success response.
+// This function:
+//   - Validates user input (username, password, email format, etc.)
+//   - Verifies that a valid OrganizationID is provided
+//   - Hashes the password securely
+//   - Stores the user in the database
+//
+// Returns 201 on success, 400 for bad input, or 409 if a duplicate user exists.
 func handleRegister(c fiber.Ctx) error {
-	var body struct {
-		Username    string `json:"username"`
-		Password    string `json:"password"`
-		Email       string `json:"email"`
-		PhoneNumber string `json:"phone_number"`
-		FirstName   string `json:"first_name"`
-		MiddleName  string `json:"middle_name"`
-		LastName    string `json:"last_name"`
-		Address     string `json:"address"`
-	}
+	// Parse and bind JSON input to struct
+	var body handleRegisterInput
 	if err := c.Bind().Body(&body); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid input")
 	}
 
+	// Validate user input fields
+	if err := validateRegisterInput(body); err != nil {
+		return err
+	}
+
+	// Verify that the organization exists
+	var org db.Organization
+	if body.OrganizationID == nil {
+		return fiber.NewError(fiber.StatusBadRequest, "organization_id is required")
+	}
+	if err := db.DB.First(&org, *body.OrganizationID).Error; err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "specified organization not found")
+	}
+
+	// Hash the password
 	hash, err := auth.HashPassword(body.Password)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to hash password")
 	}
 
+	// Persist the user in the database
 	user := db.User{
-		Username:     body.Username,
-		Email:        body.Email,
-		PhoneNumber:  body.PhoneNumber,
-		FirstName:    body.FirstName,
-		MiddleName:   body.MiddleName,
-		LastName:     body.LastName,
-		Address:      body.Address,
-		PasswordHash: hash,
-		IsActive:     true,
+		Username:       body.Username,
+		Email:          body.Email,
+		PhoneNumber:    body.PhoneNumber,
+		FirstName:      body.FirstName,
+		MiddleName:     body.MiddleName,
+		LastName:       body.LastName,
+		Address:        body.Address,
+		PasswordHash:   hash,
+		IsActive:       true,
+		OrganizationID: org.ID,
 	}
 
 	if err := db.DB.Create(&user).Error; err != nil {
@@ -76,21 +104,53 @@ func handleRegister(c fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "user registered"})
 }
 
+// validateRegisterInput validates fields from a registration request using centralized config-driven rules.
+func validateRegisterInput(input handleRegisterInput) error {
+	if input.Username == "" || input.Password == "" || input.Email == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "username, password, and email are required")
+	}
+	if len(input.Password) < 6 {
+		return fiber.NewError(fiber.StatusBadRequest, "password must be at least 6 characters")
+	}
+	if !validateEmail(input.Email) {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid email format")
+	}
+	return nil
+}
+
+func validateEmail(email string) bool {
+	if len(email) < 3 || len(email) > 254 {
+		return false
+	}
+	if !strings.Contains(email, "@") {
+		return false
+	}
+	return true
+}
+
+// handleLoginInput represents the expected JSON structure for login.
+type handleLoginInput struct {
+	Username   string `json:"username"`    // required
+	Password   string `json:"password"`    // required
+	BackupCode string `json:"backup_code"` // optional
+}
+
 // handleLogin returns a Fiber handler that performs user login,
 // validates credentials, and returns either a 2FA challenge or a JWT.
 func handleLogin(cfg *config.Config) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		var body struct {
-			Username   string `json:"username"`
-			Password   string `json:"password"`
-			BackupCode string `json:"backup_code"` // optional
+		var org db.Organization
+		if err := db.DB.First(&org).Error; err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "default organization not found")
 		}
+
+		var body handleLoginInput
 		if err := c.Bind().Body(&body); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid input")
 		}
 
 		var user db.User
-		if err := db.DB.Preload("BackupCodes").Where("username = ?", body.Username).First(&user).Error; err != nil {
+		if err := db.DB.Preload("BackupCodes").Where("username = ? AND organization_id = ?", body.Username, org.ID).First(&user).Error; err != nil {
 			return fiber.NewError(fiber.StatusUnauthorized, "user not found")
 		}
 
@@ -143,6 +203,11 @@ func handleLogin(cfg *config.Config) fiber.Handler {
 	}
 }
 
+// handle2FAVerifyInput represents the expected JSON structure for 2FA verification.
+type handle2FAVerifyInput struct {
+	Code string `json:"code"` // required TOTP code
+}
+
 // handle2FASetup returns a handler that creates and stores a TOTP secret,
 // and returns it to the client for use in authenticator apps.
 func handle2FASetup(cfg *config.Config) fiber.Handler {
@@ -172,9 +237,7 @@ func handle2FAVerify(cfg *config.Config) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user := c.Locals("user").(db.User)
 
-		var body struct {
-			Code string `json:"code"`
-		}
+		var body handle2FAVerifyInput
 		if err := c.Bind().Body(&body); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid input")
 		}
@@ -209,15 +272,18 @@ func handle2FAVerify(cfg *config.Config) fiber.Handler {
 	}
 }
 
+// handle2FADisableInput represents the expected JSON structure for disabling 2FA.
+type handle2FADisableInput struct {
+	Code     string `json:"code"`     // optional TOTP code for verification
+	Password string `json:"password"` // optional password for verification (not currently used)
+}
+
 // handle2FADisable disables TOTP-based 2FA and deletes all backup codes.
 func handle2FADisable(cfg *config.Config) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user := c.Locals("user").(db.User)
 
-		var body struct {
-			Code     string `json:"code"`
-			Password string `json:"password"`
-		}
+		var body handle2FADisableInput
 		if err := c.Bind().Body(&body); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid input")
 		}

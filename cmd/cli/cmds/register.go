@@ -15,16 +15,30 @@ import (
 	"golang.org/x/term"
 )
 
-// RegisterCmd returns the `register` Cobra command which registers a new user
-// by collecting user details and securely reading the password from input or stdin.
+// RegisterCmd creates the Cobra CLI command for registering a new user.
 //
-// Parameters:
-//   - apiURL: Pointer to the base URL of the goIAM API.
+// This command collects user input via flags and prompts, then sends a POST request to
+// the goIAM backend to create a new user. It supports secure password entry and piping.
 //
-// Returns:
-//   - *cobra.Command: A fully initialized Cobra command for user registration.
+// Required flags:
+//   - --username or -u
+//   - --email or -e
+//   - --organization-id
+//
+// Optional flags:
+//   - --password or -p (if omitted, will prompt securely)
+//   - --phone
+//   - --first
+//   - --middle
+//   - --last
+//   - --address
+//
+// Example:
+//
+//	goiam register -u alice -e alice@example.com --organization-id 1
 func RegisterCmd(apiURL *string) *cobra.Command {
 	var username, password, email, phone, first, middle, last, address string
+	var orgID string
 
 	cmd := &cobra.Command{
 		Use:   "register",
@@ -80,14 +94,15 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 
 			// Prepare registration payload
 			data := map[string]string{
-				"username":     username,
-				"password":     password,
-				"email":        email,
-				"phone_number": phone,
-				"first_name":   first,
-				"middle_name":  middle,
-				"last_name":    last,
-				"address":      address,
+				"username":        username,
+				"password":        password,
+				"email":           email,
+				"phone_number":    phone,
+				"first_name":      first,
+				"middle_name":     middle,
+				"last_name":       last,
+				"address":         address,
+				"organization_id": orgID,
 			}
 
 			post(apiURL, "/auth/register", data, "")
@@ -103,20 +118,22 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 	cmd.Flags().StringVar(&middle, "middle", "", "Middle name")
 	cmd.Flags().StringVar(&last, "last", "", "Last name")
 	cmd.Flags().StringVar(&address, "address", "", "Address")
+	cmd.Flags().StringVar(&orgID, "organization-id", "", "Organization ID (required)")
 
 	cmd.MarkFlagRequired("username")
 	cmd.MarkFlagRequired("email")
+	cmd.MarkFlagRequired("organization-id")
 
 	return cmd
 }
 
-// post sends an HTTP POST request to the goIAM API with the provided payload and token.
+// post sends a JSON-encoded POST request to the goIAM API.
 //
 // Parameters:
-//   - apiURL: Pointer to the base URL of the API.
-//   - path: API path to post to.
-//   - data: Map of JSON key-value pairs to be sent as the request body.
-//   - token: Optional bearer token for authentication.
+//   - apiURL: Pointer to base API URL (e.g., https://api.example.com)
+//   - path: Endpoint path (e.g., /auth/register)
+//   - data: Key-value pairs to be marshaled into JSON
+//   - token: Optional Bearer token for Authorization header
 func post(apiURL *string, path string, data map[string]string, token string) {
 	body, _ := json.Marshal(data)
 	req, _ := http.NewRequest("POST", *apiURL+path, bytes.NewBuffer(body))

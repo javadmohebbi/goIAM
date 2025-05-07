@@ -58,10 +58,12 @@ go build -o goiam-cli main.go
 ### Register a new user
 
 ```bash
-go run main.go register --username john --email john@example.com --first John --last Doe
+go run main.go register --username john --email john@example.com --organization-id 1 --first John --last Doe
 ```
 
 You will be prompted for password securely.
+
+> ℹ️ `--organization-id` is now a required flag and must match an existing organization in your backend.
 
 ### Login with 2FA support
 

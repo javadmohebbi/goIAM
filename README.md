@@ -79,6 +79,7 @@ curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/j
   "username": "john",
   "password": "secret123",
   "email": "john@example.com",
+  "organization_id": 1,
   "phone_number": "1234567890",
   "first_name": "John",
   "middle_name": "Q",
@@ -86,6 +87,8 @@ curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/j
   "address": "123 Main St"
 }'
 ```
+
+> 🛂 The `organization_id` field is required and must match an existing organization.
 
 ### Login
 

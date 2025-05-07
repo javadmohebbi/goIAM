@@ -4,39 +4,51 @@ package db
 
 import "gorm.io/gorm"
 
-// Group represents a collection of users that can share common policies.
-//
-// Fields:
-//   - Name: a unique name for the group
-//   - Users: the users belonging to this group (many-to-many)
-//   - Policies: policies applied to this group (many-to-many)
+// Organization represents a tenant in the multi-tenant IAM system.
+// It provides logical isolation for users, groups, roles, and policies.
+type Organization struct {
+	gorm.Model
+	Name  string `gorm:"uniqueIndex;not null"` // Unique organization name
+	Users []User // Users in the organization
+}
+
 type Group struct {
 	gorm.Model
-	Name     string   `gorm:"uniqueIndex;not null"`      // Unique group name
-	Users    []User   `gorm:"many2many:user_groups;"`    // Users in the group
-	Policies []Policy `gorm:"many2many:group_policies;"` // Group-wide policies
+	Name           string `gorm:"not null;uniqueIndex:idx_org_group_name"` // Unique within org
+	OrganizationID uint   // Tenant scoping
+	Organization   Organization
+	Users          []User   `gorm:"many2many:user_groups;"`
+	Policies       []Policy `gorm:"many2many:group_policies;"`
 }
 
-// Role represents a set of permissions assigned to users, usually by job function.
+// Role represents a job-based permission set within an organization.
 //
 // Fields:
-//   - Name: a unique name for the role
+//   - Name: a name unique within the organization
+//   - OrganizationID: foreign key to the organization this role belongs to
+//   - Organization: the organization entity this role belongs to
 //   - Users: users assigned this role (many-to-many)
-//   - Policies: policies associated with this role (many-to-many)
+//   - Policies: policies assigned to this role (many-to-many)
 type Role struct {
 	gorm.Model
-	Name     string   `gorm:"uniqueIndex;not null"`     // Unique role name
-	Users    []User   `gorm:"many2many:user_roles;"`    // Users with this role
-	Policies []Policy `gorm:"many2many:role_policies;"` // Role-wide policies
+	Name           string `gorm:"not null;uniqueIndex:idx_org_role_name"` // Unique within org
+	OrganizationID uint
+	Organization   Organization
+	Users          []User   `gorm:"many2many:user_roles;"`
+	Policies       []Policy `gorm:"many2many:role_policies;"`
 }
 
-// Policy defines a named access control rule that can be linked to groups or roles.
+// Policy defines access control rules scoped to an organization.
 //
 // Fields:
-//   - Name: unique identifier for the policy
-//   - Description: human-readable explanation of the policy's intent
+//   - Name: a name unique within the organization
+//   - OrganizationID: foreign key to the organization this policy belongs to
+//   - Organization: the organization entity this policy belongs to
+//   - Description: optional human-readable description of the policy
 type Policy struct {
 	gorm.Model
-	Name        string `gorm:"uniqueIndex;not null"` // Unique policy name
-	Description string // Optional description
+	Name           string `gorm:"not null;uniqueIndex:idx_org_policy_name"` // Unique within org
+	OrganizationID uint
+	Organization   Organization
+	Description    string
 }

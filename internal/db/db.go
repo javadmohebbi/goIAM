@@ -22,7 +22,7 @@ var DB *gorm.DB
 //
 // Supported engines include: "sqlite", "postgres", "mysql", "sqlserver", "clickhouse".
 // It uses the GORM library to establish the connection and automatically migrates
-// the defined models (User, Group, Role, Policy, BackupCode).
+// the defined models (Organization, User, Group, Role, Policy, BackupCode).
 //
 // Parameters:
 //   - engine: name of the database engine (e.g., "sqlite", "postgres")
@@ -56,6 +56,7 @@ func Init(engine, dsn string) {
 
 	// Automatically migrate database schemas for the core models
 	if err := DB.AutoMigrate(
+		&Organization{},
 		&User{},
 		&Group{},
 		&Role{},
@@ -63,5 +64,17 @@ func Init(engine, dsn string) {
 		&BackupCode{},
 	); err != nil {
 		log.Fatalf("auto migration failed: %v", err)
+	}
+
+	// Create default organization if none exist
+	var count int64
+	if err := DB.Model(&Organization{}).Count(&count).Error; err != nil {
+		log.Fatalf("failed to count organizations: %v", err)
+	}
+	if count == 0 {
+		if err := DB.Create(&Organization{Name: "goIAM"}).Error; err != nil {
+			log.Fatalf("failed to create default organization: %v", err)
+		}
+		log.Println("default organization 'goIAM' created")
 	}
 }

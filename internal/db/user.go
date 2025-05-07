@@ -5,9 +5,10 @@ package db
 import "gorm.io/gorm"
 
 // User represents an account in the system with identity and access management attributes.
+// Each user belongs to one organization, allowing usernames and emails to be reused across tenants.
 //
 // Fields:
-//   - Username, Email, and PhoneNumber uniquely identify the user
+//   - Username, Email, and PhoneNumber are unique within their organization
 //   - EmailVerified and PhoneVerified indicate verification status
 //   - PasswordHash stores the user's hashed password
 //   - FirstName, MiddleName, LastName, and Address hold personal info
@@ -16,9 +17,9 @@ import "gorm.io/gorm"
 //   - TOTPSecret and BackupCodes support 2FA functionality
 type User struct {
 	gorm.Model
-	Username      string `gorm:"uniqueIndex;not null"` // Unique username
-	Email         string `gorm:"uniqueIndex"`          // Optional unique email
-	EmailVerified bool   `gorm:"default:false"`        // Email verification flag
+	Username      string `gorm:"not null;uniqueIndex:idx_org_username"` // Unique within org
+	Email         string `gorm:"uniqueIndex:idx_org_email"`             // Unique within org
+	EmailVerified bool   `gorm:"default:false"`                         // Email verification flag
 	PhoneNumber   string // Optional phone number
 	PhoneVerified bool   `gorm:"default:false"` // Phone number verification flag
 	PasswordHash  string `gorm:"not null"`      // Bcrypt-hashed password
@@ -28,7 +29,9 @@ type User struct {
 	LastName   string // User's last name
 	Address    string // Mailing or home address
 
-	IsActive bool `gorm:"default:true"` // Whether the account is enabled
+	IsActive       bool         `gorm:"default:true"` // Whether the account is enabled
+	OrganizationID uint         // Foreign key to organization
+	Organization   Organization // GORM association
 
 	// Relationships
 	Groups   []Group  `gorm:"many2many:user_groups;"`   // Group memberships

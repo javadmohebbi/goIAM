@@ -2,7 +2,11 @@
 // and 2FA (Two-Factor Authentication) features in the IAM system.
 package db
 
-import "gorm.io/gorm"
+import (
+	"errors"
+
+	"gorm.io/gorm"
+)
 
 // User represents an account in the system with identity and access management attributes.
 // Each user belongs to one organization, allowing usernames and emails to be reused across tenants.
@@ -55,4 +59,53 @@ type BackupCode struct {
 	UserID   uint   // Foreign key to User
 	CodeHash string `gorm:"not null"`      // Hashed version of the backup code
 	Used     bool   `gorm:"default:false"` // Whether the code has been used
+}
+
+// CreateUser inserts a new User into the database.
+//
+// Parameters:
+//   - user: pointer to a User struct with required fields.
+//
+// Returns an error if creation fails.
+func CreateUser(user *User) error {
+	return DB.Create(user).Error
+}
+
+// GetUserByID retrieves a User by its primary key.
+//
+// Parameters:
+//   - id: the user's ID.
+//
+// Returns the User and an error if not found or query fails.
+func GetUserByID(id uint) (*User, error) {
+	var user User
+	if err := DB.Preload("Groups").Preload("Roles").Preload("Policies").
+		Preload("BackupCodes").
+		First(&user, id).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// UpdateUser applies updates to the given User object.
+//
+// Parameters:
+//   - user: pointer to a modified User struct.
+//
+// Returns an error if the update fails.
+func UpdateUser(user *User) error {
+	return DB.Save(user).Error
+}
+
+// DeleteUser removes a User from the database by its ID.
+//
+// Parameters:
+//   - id: the user's ID.
+//
+// Returns an error if deletion fails or ID is invalid.
+func DeleteUser(id uint) error {
+	if id == 0 {
+		return errors.New("invalid user ID")
+	}
+	return DB.Delete(&User{}, id).Error
 }

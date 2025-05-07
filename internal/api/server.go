@@ -47,6 +47,18 @@ func (a *API) StartServer() error {
 		})
 	})
 
+	// Log all incoming requests
+	app.Use(func(c fiber.Ctx) error {
+		log.Printf("Incoming %s request to %s\n", c.Method(), c.Path())
+
+		fmt.Printf("---BEGIN--")
+		log.Println(c.Request().String())
+		log.Println(c.Request().Body())
+		fmt.Printf("---END--")
+
+		return c.Next()
+	})
+
 	// Register routes depending on auth provider
 	a.registerRoutes(app)
 

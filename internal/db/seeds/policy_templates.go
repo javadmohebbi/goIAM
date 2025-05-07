@@ -1,8 +1,8 @@
 package seeds
 
 import (
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/javadmohebbi/goIAM/internal/db"
@@ -80,7 +80,7 @@ func SeedDefaultPoliciesForOrg(orgID uint, dbConn *gorm.DB) error {
 		if err == nil {
 			continue // Already exists
 		}
-		if err != nil && !strings.Contains(err.Error(), "record not found") {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("db error: %w", err)
 		}
 

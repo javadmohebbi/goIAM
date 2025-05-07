@@ -15,18 +15,18 @@ import (
 //   - Debug: whether debug mode is enabled
 //   - Database: the type of database used (e.g., "sqlite", "postgres")
 //   - DatabaseDSN: the database connection string (DSN)
-//   - AuthProvider: the authentication provider ("local", "ldap", etc.)
+//   - AuthProviders: a list of authentication providers ("local", "ldap", etc.)
 //   - JWTSecret: the secret key used for signing JWT tokens
 type Config struct {
-	Port         int              `yaml:"port"`
-	Debug        bool             `yaml:"debug"`
-	Database     string           `yaml:"database"`      // "sqlite", "postgres", "mysql", etc.
-	DatabaseDSN  string           `yaml:"database_dsn"`  // connection string for the database
-	AuthProvider string           `yaml:"auth_provider"` // "local", "ldap", etc.
-	JWTSecret    string           `yaml:"jwt_secret"`    // secret for JWT token signing
-	Validation   ValidationConfig `yaml:"validation"`
-	AppName      string           `yaml:"appName"`    // Application name used in CLI and logs
-	ServerName   string           `yaml:"serverName"` // Server name for headers or UI
+	Port          int                  `yaml:"port"`
+	Debug         bool                 `yaml:"debug"`
+	Database      string               `yaml:"database"`       // "sqlite", "postgres", "mysql", etc.
+	DatabaseDSN   string               `yaml:"database_dsn"`   // connection string for the database
+	AuthProviders []AuthProviderConfig `yaml:"auth_providers"` // list of typed auth providers
+	JWTSecret     string               `yaml:"jwt_secret"`     // secret for JWT token signing
+	Validation    ValidationConfig     `yaml:"validation"`
+	AppName       string               `yaml:"appName"`    // Application name used in CLI and logs
+	ServerName    string               `yaml:"serverName"` // Server name for headers or UI
 }
 
 type ValidationConfig struct {
@@ -35,6 +35,41 @@ type ValidationConfig struct {
 	PasswordRegex     string `yaml:"password_regex"`
 	WebsiteRegex      string `yaml:"website_regex"`
 	PasswordMinLength int    `yaml:"password_min_length"`
+}
+
+// AuthProviderConfig holds a named provider and its configuration block (as raw map).
+type AuthProviderConfig struct {
+	Name   string                 `yaml:"name"`   // e.g., "local", "ldap", "firebase"
+	Config map[string]interface{} `yaml:"config"` // raw provider-specific configuration
+}
+
+// LDAPConfig defines configuration fields for an LDAP provider.
+type LDAPConfig struct {
+	Server string `yaml:"server"`
+	BaseDN string `yaml:"baseDn"`
+}
+
+// Auth0Config defines configuration fields for an Auth0 provider.
+type Auth0Config struct {
+	Domain       string `yaml:"domain"`
+	ClientID     string `yaml:"clientId"`
+	ClientSecret string `yaml:"clientSecret"`
+	Audience     string `yaml:"audience"`
+}
+
+// EntraIDConfig defines configuration fields for Microsoft Entra ID.
+type EntraIDConfig struct {
+	TenantID      string   `yaml:"tenantId"`
+	ClientID      string   `yaml:"clientId"`
+	ClientSecret  string   `yaml:"clientSecret"`
+	AuthorityHost string   `yaml:"authorityHost"`
+	Scopes        []string `yaml:"scopes"`
+}
+
+// FirebaseConfig defines configuration fields for Firebase Authentication.
+type FirebaseConfig struct {
+	ProjectID       string `yaml:"projectId"`
+	CredentialsFile string `yaml:"credentialsFile"`
 }
 
 // LoadConfig loads a YAML configuration file from the specified path.
@@ -99,10 +134,10 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.DatabaseDSN = dsn
 	}
 
-	if provider := os.Getenv("IAM_AUTH_PROVIDER"); provider != "" {
-		// Override auth provider from environment IAM_AUTH_PROVIDER
-		cfg.AuthProvider = provider
-	}
+	// Deprecated: single string override is not supported for multi-provider mode
+	// if provider := os.Getenv("IAM_AUTH_PROVIDER"); provider != "" {
+	// 	cfg.AuthProvider = provider
+	// }
 
 	if appName := os.Getenv("IAM_APP_NAME"); appName != "" {
 		cfg.AppName = appName
@@ -112,4 +147,18 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// As unmarshals the raw Config map into the provided target struct.
+//
+// Example usage:
+//
+//	var cfg LDAPConfig
+//	if err := provider.As(&cfg); err != nil { ... }
+func (ap *AuthProviderConfig) As(target any) error {
+	data, err := yaml.Marshal(ap.Config)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(data, target)
 }

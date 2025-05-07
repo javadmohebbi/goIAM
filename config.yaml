@@ -16,7 +16,35 @@ jwt_secret: "super-secret-key"
 debug: true
 
 # Authentication provider to use: currently only "local" is supported
-auth_provider: local
+auth_providers:
+  - name: local    
+
+  # - name: ldap
+  #   config:
+  #     server: ldap://adsrv.lab.local:389
+  #     baseDn: CN=Users,DC=lab,DC=local
+
+  # - name: firebase
+  #   config:
+  #     projectId: your-firebase-project-id
+  #     credentialsFile: path/to/serviceAccountKey.json
+
+  # - name: auth0
+  #   config:
+  #     domain: your-tenant.us.auth0.com
+  #     clientId: your-client-id
+  #     clientSecret: your-client-secret
+  #     audience: https://your-api-identifier
+
+  # - name: entra_id
+  #   config:
+  #     tenantId: your-tenant-id
+  #     clientId: your-client-id
+  #     clientSecret: your-client-secret
+  #     authorityHost: https://login.microsoftonline.com
+  #     scopes:
+  #       - api://your-app-id/.default
+    
 
 # === Database Configuration ===
 

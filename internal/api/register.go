@@ -60,9 +60,10 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 		orgSlug := body.OrganizationSlug
 
 		if orgName == "" {
-			// Default org name and slug
-			orgName = "goIAM Organization"
-			orgSlug = "goIAM-org-" + uuid.New().String()[:12]
+			// Default unique org name and slug
+			suffix := uuid.New().String()[:8]
+			orgName = "goIAM Organization " + suffix
+			orgSlug = "goIAM-org-" + suffix
 		} else {
 			// Use provided orgName and generate slug if needed
 			if orgSlug == "" {
@@ -81,6 +82,9 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 			Description: "Created automatically during registration",
 		}
 		if err := db.DB.Create(&org).Error; err != nil {
+			if strings.Contains(err.Error(), "UNIQUE constraint failed: organizations.name") {
+				return fiber.NewError(fiber.StatusConflict, "organization name already exists")
+			}
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to create organization")
 		}
 	} else {

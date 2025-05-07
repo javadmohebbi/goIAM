@@ -2,53 +2,70 @@
 // including Group, Role, and Policy relationships used by the authentication and authorization system.
 package db
 
-import "gorm.io/gorm"
-
-// Organization represents a tenant in the multi-tenant IAM system.
-// It provides logical isolation for users, groups, roles, and policies.
-type Organization struct {
-	gorm.Model
-	Name  string `gorm:"uniqueIndex;not null"` // Unique organization name
-	Users []User // Users in the organization
-}
-
-type Group struct {
-	gorm.Model
-	Name           string `gorm:"not null;uniqueIndex:idx_org_group_name"` // Unique within org
-	OrganizationID uint   // Tenant scoping
-	Organization   Organization
-	Users          []User   `gorm:"many2many:user_groups;"`
-	Policies       []Policy `gorm:"many2many:group_policies;"`
-}
-
-// Role represents a job-based permission set within an organization.
+// EvaluatePolicy determines whether a user is allowed to perform the specified action on the given resource.
 //
-// Fields:
-//   - Name: a name unique within the organization
-//   - OrganizationID: foreign key to the organization this role belongs to
-//   - Organization: the organization entity this role belongs to
-//   - Users: users assigned this role (many-to-many)
-//   - Policies: policies assigned to this role (many-to-many)
-type Role struct {
-	gorm.Model
-	Name           string `gorm:"not null;uniqueIndex:idx_org_role_name"` // Unique within org
-	OrganizationID uint
-	Organization   Organization
-	Users          []User   `gorm:"many2many:user_roles;"`
-	Policies       []Policy `gorm:"many2many:role_policies;"`
-}
-
-// Policy defines access control rules scoped to an organization.
+// It aggregates all policies assigned to the user directly, via groups, and via roles,
+// then evaluates their policy statements by checking matching actions, resources, and effects.
 //
-// Fields:
-//   - Name: a name unique within the organization
-//   - OrganizationID: foreign key to the organization this policy belongs to
-//   - Organization: the organization entity this policy belongs to
-//   - Description: optional human-readable description of the policy
-type Policy struct {
-	gorm.Model
-	Name           string `gorm:"not null;uniqueIndex:idx_org_policy_name"` // Unique within org
-	OrganizationID uint
-	Organization   Organization
-	Description    string
+// Returns true if an "Allow" policy applies and is not overridden by a matching "Deny".
+func EvaluatePolicy(user User, action string, resource string) bool {
+	// Gather all relevant policy IDs
+	policyIDs := map[uint]struct{}{}
+
+	// User's direct policies
+	for _, p := range user.Policies {
+		policyIDs[p.ID] = struct{}{}
+	}
+	// Group policies
+	for _, g := range user.Groups {
+		for _, p := range g.Policies {
+			policyIDs[p.ID] = struct{}{}
+		}
+	}
+	// Role policies
+	for _, r := range user.Roles {
+		for _, p := range r.Policies {
+			policyIDs[p.ID] = struct{}{}
+		}
+	}
+
+	// Track effective decision
+	allowed := false
+
+	for pid := range policyIDs {
+		var policy Policy
+		// Preload Actions and Resources for each statement
+		if err := DB.Preload("Statements.Actions").Preload("Statements.Resources").First(&policy, pid).Error; err != nil {
+			continue
+		}
+
+		for _, stmt := range policy.Statements {
+			actionMatch := false
+			for _, a := range stmt.Actions {
+				if a.Action == action || a.Action == "*" {
+					actionMatch = true
+					break
+				}
+			}
+
+			resourceMatch := false
+			for _, r := range stmt.Resources {
+				if r.Resource == resource || r.Resource == "*" {
+					resourceMatch = true
+					break
+				}
+			}
+
+			if actionMatch && resourceMatch {
+				if stmt.Effect == "Deny" {
+					return false // Deny overrides everything
+				}
+				if stmt.Effect == "Allow" {
+					allowed = true
+				}
+			}
+		}
+	}
+
+	return allowed
 }

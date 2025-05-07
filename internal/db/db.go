@@ -61,20 +61,23 @@ func Init(engine, dsn string) {
 		&Group{},
 		&Role{},
 		&Policy{},
+		&PolicyStatement{},
+		&PolicyAction{},
+		&PolicyResource{},
 		&BackupCode{},
 	); err != nil {
 		log.Fatalf("auto migration failed: %v", err)
 	}
 
 	// Create default organization if none exist
-	var count int64
-	if err := DB.Model(&Organization{}).Count(&count).Error; err != nil {
-		log.Fatalf("failed to count organizations: %v", err)
-	}
-	if count == 0 {
-		if err := DB.Create(&Organization{Name: "goIAM"}).Error; err != nil {
-			log.Fatalf("failed to create default organization: %v", err)
-		}
-		log.Println("default organization 'goIAM' created")
-	}
+	// var count int64
+	// if err := DB.Model(&Organization{}).Count(&count).Error; err != nil {
+	// 	log.Fatalf("failed to count organizations: %v", err)
+	// }
+	// if count == 0 {
+	// 	if err := DB.Create(&Organization{Name: "goIAM"}).Error; err != nil {
+	// 		log.Fatalf("failed to create default organization: %v", err)
+	// 	}
+	// 	log.Println("default organization 'goIAM' created")
+	// }
 }

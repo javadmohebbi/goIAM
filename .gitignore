@@ -1,2 +1,3 @@
 # local sqlite database
 iam.db
+.DS_Store

@@ -57,13 +57,22 @@ go build -o goiam-cli main.go
 
 ### Register a new user
 
+Register a user using one of the following options:
+
+#### ➤ With existing organization ID:
 ```bash
-go run main.go register --username john --email john@example.com --organization-id 1 --first John --last Doe
+go run main.go register --username alice --email alice@example.com --organization-id 1
 ```
 
-You will be prompted for password securely.
+#### ➤ Creating a new organization automatically:
+```bash
+go run main.go register --username bob --email bob@example.com --organization-name "Bob Corp"
+```
 
-> ℹ️ `--organization-id` is now a required flag and must match an existing organization in your backend.
+- `--organization-slug` is optional; if omitted, it will be derived from the name.
+- If no `--organization-id` is provided, a new org will be created using name/slug or fallback to `goIAM-org-{uuid}`.
+
+You will be prompted for password securely.
 
 ### Login with 2FA support
 

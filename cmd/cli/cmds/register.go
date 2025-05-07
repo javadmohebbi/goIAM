@@ -24,7 +24,6 @@ import (
 // Required flags:
 //   - --username or -u
 //   - --email or -e
-//   - --organization-id
 //
 // Optional flags:
 //   - --password or -p (if omitted, will prompt securely)
@@ -33,6 +32,9 @@ import (
 //   - --middle
 //   - --last
 //   - --address
+//   - --organization-id
+//   - --organization-name
+//   - --organization-slug
 //
 // Example:
 //
@@ -40,6 +42,7 @@ import (
 func RegisterCmd(apiURL *string) *cobra.Command {
 	var username, password, email, phone, first, middle, last, address string
 	var orgID string
+	var orgName, orgSlug string
 
 	cmd := &cobra.Command{
 		Use:   "register",
@@ -93,24 +96,34 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 				}
 			}
 
-			orgUint, err := strconv.ParseUint(orgID, 10, 32)
-			if err != nil {
-				fmt.Println("Invalid organization ID:", err)
-				return
+			var data map[string]any
+			if orgID != "" {
+				orgUint, err := strconv.ParseUint(orgID, 10, 32)
+				if err != nil {
+					fmt.Println("Invalid organization ID:", err)
+					return
+				}
+				data = map[string]any{
+					"organization_id": uint(orgUint),
+				}
+			} else {
+				data = map[string]any{}
+				if orgName != "" {
+					data["organization_name"] = orgName
+				}
+				if orgSlug != "" {
+					data["organization_slug"] = orgSlug
+				}
 			}
 
-			// Prepare registration payload
-			data := map[string]any{
-				"username":        username,
-				"password":        password,
-				"email":           email,
-				"phone_number":    phone,
-				"first_name":      first,
-				"middle_name":     middle,
-				"last_name":       last,
-				"address":         address,
-				"organization_id": uint(orgUint),
-			}
+			data["username"] = username
+			data["password"] = password
+			data["email"] = email
+			data["phone_number"] = phone
+			data["first_name"] = first
+			data["middle_name"] = middle
+			data["last_name"] = last
+			data["address"] = address
 
 			post(apiURL, "/auth/register", data, "")
 		},
@@ -125,11 +138,13 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 	cmd.Flags().StringVar(&middle, "middle", "", "Middle name")
 	cmd.Flags().StringVar(&last, "last", "", "Last name")
 	cmd.Flags().StringVar(&address, "address", "", "Address")
-	cmd.Flags().StringVar(&orgID, "organization-id", "", "Organization ID (required)")
+	cmd.Flags().StringVar(&orgID, "organization-id", "", "Organization ID (optional)")
+	cmd.Flags().StringVar(&orgName, "organization-name", "", "Name of new organization (optional)")
+	cmd.Flags().StringVar(&orgSlug, "organization-slug", "", "Slug of new organization (optional)")
 
 	cmd.MarkFlagRequired("username")
 	cmd.MarkFlagRequired("email")
-	cmd.MarkFlagRequired("organization-id")
+	// cmd.MarkFlagRequired("organization-id")
 
 	return cmd
 }

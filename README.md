@@ -74,21 +74,31 @@ You can override configuration values using environment variables:
 
 ### Register
 
+To register a user under an existing organization:
+
 ```bash
 curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{
   "username": "john",
   "password": "secret123",
   "email": "john@example.com",
   "organization_id": 1,
-  "phone_number": "1234567890",
   "first_name": "John",
-  "middle_name": "Q",
-  "last_name": "Public",
-  "address": "123 Main St"
+  "last_name": "Doe"
 }'
 ```
 
-> 🛂 The `organization_id` field is required and must match an existing organization.
+To register a user and create a new organization:
+
+```bash
+curl -X POST http://localhost:8080/auth/register -H "Content-Type: application/json" -d '{
+  "username": "alice",
+  "password": "strongpassword",
+  "email": "alice@example.com",
+  "organization_name": "Acme Corp"
+}'
+```
+
+> 🛂 If `organization_id` is omitted, a new organization will be created using `organization_name` and optionally `organization_slug`.
 
 ### Login
 

@@ -2,30 +2,39 @@ package api
 
 import (
 	"log"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 	"github.com/javadmohebbi/goIAM/internal/auth"
 	"github.com/javadmohebbi/goIAM/internal/db"
 )
 
 // handleRegisterInput represents the expected JSON structure for registration.
+//
+// A user may either:
+//   - provide an existing organization_id
+//   - or leave it blank and supply an optional organization_name and/or slug,
+//     in which case a new organization will be created.
 type handleRegisterInput struct {
-	Username       string `json:"username"`        // required
-	Password       string `json:"password"`        // required, validated by regex
-	Email          string `json:"email"`           // required, validated by regex
-	PhoneNumber    string `json:"phone_number"`    // optional, validated if present
-	FirstName      string `json:"first_name"`      // optional
-	MiddleName     string `json:"middle_name"`     // optional
-	LastName       string `json:"last_name"`       // optional
-	Address        string `json:"address"`         // optional
-	OrganizationID uint   `json:"organization_id"` // optional, use default if not set
+	Username         string `json:"username"`          // required
+	Password         string `json:"password"`          // required, validated by regex
+	Email            string `json:"email"`             // required, validated by regex
+	PhoneNumber      string `json:"phone_number"`      // optional, validated if present
+	FirstName        string `json:"first_name"`        // optional
+	MiddleName       string `json:"middle_name"`       // optional
+	LastName         string `json:"last_name"`         // optional
+	Address          string `json:"address"`           // optional
+	OrganizationID   uint   `json:"organization_id"`   // optional, use default if not set
+	OrganizationName string `json:"organization_name"` // optional: name of new org if org_id not provided
+	OrganizationSlug string `json:"organization_slug"` // optional: custom slug (generated from name if not given)
 }
 
 // handleRegister handles user registration for a specific organization.
 //
 // This function:
 //   - Validates user input (username, password, email format, etc.)
-//   - Verifies that a valid OrganizationID is provided
+//   - Verifies that a valid OrganizationID is provided or creates a new organization if not
 //   - Hashes the password securely
 //   - Stores the user in the database
 //
@@ -43,13 +52,41 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 		return err
 	}
 
-	// Verify that the organization exists
 	var org db.Organization
+
 	if body.OrganizationID == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "organization_id is required")
-	}
-	if err := db.DB.First(&org, body.OrganizationID).Error; err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "specified organization not found")
+		// Create new organization if org_id is not provided
+		orgName := body.OrganizationName
+		orgSlug := body.OrganizationSlug
+
+		if orgName == "" {
+			// Default org name and slug
+			orgName = "goIAM Organization"
+			orgSlug = "goIAM-org-" + uuid.New().String()[:12]
+		} else {
+			// Use provided orgName and generate slug if needed
+			if orgSlug == "" {
+				orgSlug = strings.ToLower(strings.ReplaceAll(orgName, " ", "-"))
+			}
+			// Ensure slug is unique
+			var existing db.Organization
+			if err := db.DB.Where("slug = ?", orgSlug).First(&existing).Error; err == nil {
+				orgSlug = orgSlug + "-" + uuid.New().String()[:4]
+			}
+		}
+
+		org = db.Organization{
+			Name:        orgName,
+			Slug:        orgSlug,
+			Description: "Created automatically during registration",
+		}
+		if err := db.DB.Create(&org).Error; err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "failed to create organization")
+		}
+	} else {
+		if err := db.DB.First(&org, body.OrganizationID).Error; err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "specified organization not found")
+		}
 	}
 
 	// Hash the password

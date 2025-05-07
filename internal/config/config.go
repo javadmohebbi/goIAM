@@ -25,6 +25,8 @@ type Config struct {
 	AuthProvider string           `yaml:"auth_provider"` // "local", "ldap", etc.
 	JWTSecret    string           `yaml:"jwt_secret"`    // secret for JWT token signing
 	Validation   ValidationConfig `yaml:"validation"`
+	AppName      string           `yaml:"appName"`    // Application name used in CLI and logs
+	ServerName   string           `yaml:"serverName"` // Server name for headers or UI
 }
 
 type ValidationConfig struct {
@@ -100,6 +102,13 @@ func LoadConfig(path string) (*Config, error) {
 	if provider := os.Getenv("IAM_AUTH_PROVIDER"); provider != "" {
 		// Override auth provider from environment IAM_AUTH_PROVIDER
 		cfg.AuthProvider = provider
+	}
+
+	if appName := os.Getenv("IAM_APP_NAME"); appName != "" {
+		cfg.AppName = appName
+	}
+	if serverName := os.Getenv("IAM_SERVER_NAME"); serverName != "" {
+		cfg.ServerName = serverName
 	}
 
 	return &cfg, nil

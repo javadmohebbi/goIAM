@@ -24,8 +24,8 @@ func (a *API) StartServer() error {
 	// Initialize Fiber app instance
 	app := fiber.New(
 		fiber.Config{
-			ServerHeader: "goIAM",
-			AppName:      "goIAM",
+			ServerHeader: a.cfg.ServerName,
+			AppName:      a.cfg.AppName,
 		},
 	)
 

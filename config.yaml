@@ -1,3 +1,11 @@
+# Application name used in CLI output and logs
+# Can be overridden with environment variable IAM_APP_NAME
+appName: "goIAM"
+
+# Server name shown in HTTP headers or UI
+# Can be overridden with environment variable IAM_SERVER_NAME
+serverName: "goIAM Server"
+
 # Server port to listen on
 port: 8080
 

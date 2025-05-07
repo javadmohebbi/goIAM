@@ -7,9 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 )
 
-const DefaultUserAgent = "goIAM-CLI/1.0"
+// const DefaultUserAgent = "goIAM-CLI/1.0 ({os}; {arch}) Go-http-client/2.0"
+
+func BuildUserAgent() string {
+	return fmt.Sprintf("goIAM-CLI/1.0 (%s; %s) Go-http-client/2.0", runtime.GOOS, runtime.GOARCH)
+}
 
 // post sends a JSON-encoded POST request to the goIAM API and prints the response.
 //
@@ -26,7 +31,7 @@ func post(apiURL *string, path string, data map[string]any, token string, header
 	req, _ := http.NewRequest("POST", *apiURL+path, bytes.NewBuffer(body))
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", DefaultUserAgent)
+	req.Header.Set("User-Agent", BuildUserAgent())
 
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)

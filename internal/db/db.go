@@ -65,6 +65,7 @@ func Init(engine, dsn string) *gorm.DB {
 		&PolicyAction{},
 		&PolicyResource{},
 		&BackupCode{},
+		&LoginActivity{},
 	); err != nil {
 		log.Fatalf("auto migration failed: %v", err)
 	}

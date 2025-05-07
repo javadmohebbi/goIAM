@@ -53,7 +53,13 @@ func (a *API) StartServer() error {
 	}
 
 	// Start the server on the specified port
-	return app.Listen(fmt.Sprintf(":%d", a.cfg.Port))
+	return app.Listen(
+		fmt.Sprintf(":%d", a.cfg.Port), // listen on port and all interfaces
+		fiber.ListenConfig{
+			DisableStartupMessage: false, // if true, it won't show start up message of fiber
+			EnablePrintRoutes:     false, // it's false by default, if true, it will return all routes and groups
+		},
+	)
 }
 
 // stop and close the API server

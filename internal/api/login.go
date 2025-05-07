@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/javadmohebbi/goIAM/internal/auth"
 	"github.com/javadmohebbi/goIAM/internal/db"
+	"github.com/mssola/user_agent"
 )
 
 // handleLoginInput represents the expected JSON structure for login.
@@ -32,10 +33,12 @@ func (a *API) handleLogin() fiber.Handler {
 
 		var user db.User
 		if err := a.iamDB.Preload("BackupCodes").Where("username = ? AND organization_id = ?", body.Username, org.ID).First(&user).Error; err != nil {
-			return fiber.NewError(fiber.StatusUnauthorized, "user not found")
+			a.storeLoginActivity(c, db.User{Username: body.Username}, "user_not_found")
+			return fiber.NewError(fiber.StatusUnauthorized, "invalid credential") // user not found
 		}
 
 		if !auth.CheckPasswordHash(body.Password, user.PasswordHash) {
+			a.storeLoginActivity(c, user, "invalid_password")
 			return fiber.NewError(fiber.StatusUnauthorized, "invalid credentials")
 		}
 
@@ -66,6 +69,7 @@ func (a *API) handleLogin() fiber.Handler {
 				}
 			}
 			if !valid {
+				a.storeLoginActivity(c, user, "invalid_backup_code")
 				return fiber.NewError(fiber.StatusForbidden, "invalid backup code")
 			}
 		}
@@ -80,6 +84,30 @@ func (a *API) handleLogin() fiber.Handler {
 			return fiber.NewError(fiber.StatusInternalServerError, "token creation failed")
 		}
 
+		a.storeLoginActivity(c, user, "success")
+
 		return c.JSON(fiber.Map{"token": signed})
 	}
+}
+
+// storeLoginActivity creates an audit log record for a login attempt,
+// capturing metadata such as user agent, browser, OS, and IP address.
+// It logs both successful and failed login attempts, with a provided status label.
+func (a *API) storeLoginActivity(c fiber.Ctx, user db.User, status string) {
+	ua := user_agent.New(string(c.Request().Header.UserAgent()))
+	browser, _ := ua.Browser()
+
+	audit := db.LoginActivity{
+		UserID:    user.ID,                                // ID of the user attempting login
+		Username:  user.Username,                          // Username of the user attempting login
+		IP:        c.IP(),                                 // IP address from which the login was attempted
+		UserAgent: string(c.Request().Header.UserAgent()), // Raw User-Agent string
+		OS:        ua.OS(),                                // Operating system extracted from User-Agent
+		Browser:   browser,                                // Browser name extracted from User-Agent
+		Device:    ua.Platform(),                          // Device platform extracted from User-Agent
+		Status:    status,                                 // Status of the login attempt (e.g. "success", "invalid_password")
+		Success:   status == "success",                    // true if login was successful
+	}
+
+	go a.iamDB.Create(&audit)
 }

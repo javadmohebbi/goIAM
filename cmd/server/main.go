@@ -60,9 +60,11 @@ func Main() {
 	// Initialize database
 	db.Init(cfg.Database, cfg.DatabaseDSN)
 
+	_api := api.New(cfg)
+
 	// Start API server
 	fmt.Printf("[goIAM] Starting on port %d with DB [%s]...\n", cfg.Port, cfg.Database)
-	if err := api.StartServer(cfg); err != nil {
+	if err := _api.StartServer(); err != nil {
 		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 		os.Exit(1)
 	}

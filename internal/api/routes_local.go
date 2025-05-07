@@ -10,7 +10,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/javadmohebbi/goIAM/internal/auth"
-	"github.com/javadmohebbi/goIAM/internal/config"
 	"github.com/javadmohebbi/goIAM/internal/db"
 	"github.com/javadmohebbi/goIAM/internal/middleware"
 )
@@ -23,16 +22,16 @@ import (
 //   - 2FA setup and validation
 //   - regenerating backup codes
 //   - disabling 2FA
-func RegisterLocalRoutes(app *fiber.App, cfg *config.Config) {
-	app.Post("/auth/register", handleRegister)
-	app.Post("/auth/login", handleLogin(cfg))
+func (a *API) RegisterLocalRoutes(app *fiber.App) {
+	app.Post("/auth/register", a.handleRegister)
+	app.Post("/auth/login", a.handleLogin())
 
-	secure := app.Group("/secure", middleware.RequireAuth(cfg))
+	secure := app.Group("/secure", middleware.RequireAuth(a.cfg))
 
-	secure.Post("/auth/2fa/setup", handle2FASetup(cfg))
-	secure.Post("/auth/2fa/verify", handle2FAVerify(cfg))
-	secure.Post("/auth/2fa/disable", handle2FADisable(cfg))
-	secure.Post("/auth/backup-codes/regenerate", handleBackupCodes(cfg))
+	secure.Post("/auth/2fa/setup", a.handle2FASetup())
+	secure.Post("/auth/2fa/verify", a.handle2FAVerify())
+	secure.Post("/auth/2fa/disable", a.handle2FADisable())
+	secure.Post("/auth/backup-codes/regenerate", a.handleBackupCodes())
 }
 
 // handleRegisterInput represents the expected JSON structure for registration.
@@ -57,7 +56,7 @@ type handleRegisterInput struct {
 //   - Stores the user in the database
 //
 // Returns 201 on success, 400 for bad input, or 409 if a duplicate user exists.
-func handleRegister(c fiber.Ctx) error {
+func (a *API) handleRegister(c fiber.Ctx) error {
 	// Parse and bind JSON input to struct
 	var body handleRegisterInput
 	if err := c.Bind().Body(&body); err != nil {
@@ -66,7 +65,7 @@ func handleRegister(c fiber.Ctx) error {
 	}
 
 	// Validate user input fields
-	if err := validateRegisterInput(body); err != nil {
+	if err := a.validateRegisterInput(body); err != nil {
 		return err
 	}
 
@@ -107,20 +106,20 @@ func handleRegister(c fiber.Ctx) error {
 }
 
 // validateRegisterInput validates fields from a registration request using centralized config-driven rules.
-func validateRegisterInput(input handleRegisterInput) error {
+func (a *API) validateRegisterInput(input handleRegisterInput) error {
 	if input.Username == "" || input.Password == "" || input.Email == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "username, password, and email are required")
 	}
 	if len(input.Password) < 6 {
 		return fiber.NewError(fiber.StatusBadRequest, "password must be at least 6 characters")
 	}
-	if !validateEmail(input.Email) {
+	if !a.validateEmail(input.Email) {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid email format")
 	}
 	return nil
 }
 
-func validateEmail(email string) bool {
+func (a *API) validateEmail(email string) bool {
 	if len(email) < 3 || len(email) > 254 {
 		return false
 	}
@@ -139,7 +138,7 @@ type handleLoginInput struct {
 
 // handleLogin returns a Fiber handler that performs user login,
 // validates credentials, and returns either a 2FA challenge or a JWT.
-func handleLogin(cfg *config.Config) fiber.Handler {
+func (a *API) handleLogin() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		var org db.Organization
 		if err := db.DB.First(&org).Error; err != nil {
@@ -166,7 +165,7 @@ func handleLogin(cfg *config.Config) fiber.Handler {
 				"name": user.Username,
 				"exp":  time.Now().Add(5 * time.Minute).Unix(),
 			})
-			signed, err := totpToken.SignedString([]byte(cfg.JWTSecret))
+			signed, err := totpToken.SignedString([]byte(a.cfg.JWTSecret))
 			if err != nil {
 				return fiber.NewError(fiber.StatusInternalServerError, "token creation failed")
 			}
@@ -196,7 +195,7 @@ func handleLogin(cfg *config.Config) fiber.Handler {
 			"name": user.Username,
 			"exp":  time.Now().Add(24 * time.Hour).Unix(),
 		})
-		signed, err := finalToken.SignedString([]byte(cfg.JWTSecret))
+		signed, err := finalToken.SignedString([]byte(a.cfg.JWTSecret))
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "token creation failed")
 		}
@@ -212,7 +211,7 @@ type handle2FAVerifyInput struct {
 
 // handle2FASetup returns a handler that creates and stores a TOTP secret,
 // and returns it to the client for use in authenticator apps.
-func handle2FASetup(cfg *config.Config) fiber.Handler {
+func (a *API) handle2FASetup() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user := c.Locals("user").(db.User)
 
@@ -235,7 +234,7 @@ func handle2FASetup(cfg *config.Config) fiber.Handler {
 
 // handle2FAVerify verifies the TOTP code and enables 2FA for the user,
 // issuing a new long-lived token on success.
-func handle2FAVerify(cfg *config.Config) fiber.Handler {
+func (a *API) handle2FAVerify() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user := c.Locals("user").(db.User)
 
@@ -262,7 +261,7 @@ func handle2FAVerify(cfg *config.Config) fiber.Handler {
 			"name": user.Username,
 			"exp":  time.Now().Add(24 * time.Hour).Unix(),
 		})
-		signed, err := token.SignedString([]byte(cfg.JWTSecret))
+		signed, err := token.SignedString([]byte(a.cfg.JWTSecret))
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to create token")
 		}
@@ -281,7 +280,7 @@ type handle2FADisableInput struct {
 }
 
 // handle2FADisable disables TOTP-based 2FA and deletes all backup codes.
-func handle2FADisable(cfg *config.Config) fiber.Handler {
+func (a *API) handle2FADisable() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user := c.Locals("user").(db.User)
 
@@ -310,7 +309,7 @@ func handle2FADisable(cfg *config.Config) fiber.Handler {
 
 // handleBackupCodes regenerates a new set of backup codes for the user
 // and invalidates all previously issued codes.
-func handleBackupCodes(cfg *config.Config) fiber.Handler {
+func (a *API) handleBackupCodes() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user := c.Locals("user").(db.User)
 

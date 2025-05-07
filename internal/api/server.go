@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/javadmohebbi/goIAM/internal/config"
 )
 
 // StartServer initializes and starts the Fiber HTTP server.
@@ -18,7 +17,7 @@ import (
 //
 // Returns:
 //   - error if the server fails to start.
-func StartServer(cfg *config.Config) error {
+func (a *API) StartServer() error {
 	// Initialize Fiber app instance
 	app := fiber.New()
 
@@ -28,10 +27,10 @@ func StartServer(cfg *config.Config) error {
 	})
 
 	// Register routes depending on auth provider
-	if cfg.AuthProvider == "local" {
-		RegisterLocalRoutes(app, cfg)
+	if a.cfg.AuthProvider == "local" {
+		a.RegisterLocalRoutes(app)
 	}
 
 	// Start the server on the specified port
-	return app.Listen(fmt.Sprintf(":%d", cfg.Port))
+	return app.Listen(fmt.Sprintf(":%d", a.cfg.Port))
 }

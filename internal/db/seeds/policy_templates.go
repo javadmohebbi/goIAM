@@ -34,7 +34,8 @@ func SeedDefaultPoliciesForOrg(orgID uint, dbConn *gorm.DB) error {
 					Action: "*",
 				}},
 				Resources: []db.PolicyResource{{
-					Resource: "*",
+					Resource:       "*",
+					OrganizationID: orgID,
 				}},
 			}},
 		},
@@ -51,7 +52,8 @@ func SeedDefaultPoliciesForOrg(orgID uint, dbConn *gorm.DB) error {
 					{Action: "policy:read"},
 				},
 				Resources: []db.PolicyResource{{
-					Resource: "*",
+					Resource:       "*",
+					OrganizationID: orgID,
 				}},
 			}},
 		},
@@ -66,7 +68,8 @@ func SeedDefaultPoliciesForOrg(orgID uint, dbConn *gorm.DB) error {
 					{Action: "user:update"},
 				},
 				Resources: []db.PolicyResource{{
-					Resource: "org:{org_id}:user:{user_id}",
+					Resource:       "org:{org_id}:user:{user_id}",
+					OrganizationID: orgID,
 				}},
 			}},
 		},

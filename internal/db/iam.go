@@ -50,7 +50,7 @@ func EvaluatePolicy(user User, action string, resource string) bool {
 
 			resourceMatch := false
 			for _, r := range stmt.Resources {
-				if r.Resource == resource || r.Resource == "*" {
+				if (r.Resource == resource || r.Resource == "*") && r.OrganizationID == user.OrganizationID {
 					resourceMatch = true
 					break
 				}

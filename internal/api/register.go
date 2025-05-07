@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/javadmohebbi/goIAM/internal/auth"
 	"github.com/javadmohebbi/goIAM/internal/db"
+	"github.com/javadmohebbi/goIAM/internal/db/seeds"
 )
 
 // handleRegisterInput represents the expected JSON structure for registration.
@@ -87,6 +88,11 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 			}
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to create organization")
 		}
+
+		// Seed default policies into the new organization
+		if err := seeds.SeedDefaultPoliciesForOrg(org.ID, db.DB); err != nil {
+			log.Printf("failed to seed default policies: %v", err)
+		}
 	} else {
 		if err := db.DB.First(&org, body.OrganizationID).Error; err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "specified organization not found")
@@ -115,6 +121,28 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 
 	if err := db.DB.Create(&user).Error; err != nil {
 		return fiber.NewError(fiber.StatusConflict, "user exists or DB error")
+	}
+
+	// Check how many users exist in this organization
+	var userCount int64
+	if err := db.DB.Model(&db.User{}).Where("organization_id = ?", org.ID).Count(&userCount).Error; err == nil {
+		if userCount == 1 {
+			// First user gets FullAccess
+			var fullAccess db.Policy
+			if err := db.DB.
+				Where("slug LIKE ? AND organization_id = ?", "full-access%", org.ID).
+				First(&fullAccess).Error; err == nil {
+				db.DB.Model(&user).Association("Policies").Append(&fullAccess)
+			}
+		} else {
+			// Other users get SelfManage
+			var selfManage db.Policy
+			if err := db.DB.
+				Where("slug LIKE ? AND organization_id = ?", "self-manage%", org.ID).
+				First(&selfManage).Error; err == nil {
+				db.DB.Model(&user).Association("Policies").Append(&selfManage)
+			}
+		}
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "user registered"})

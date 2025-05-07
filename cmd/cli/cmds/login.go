@@ -63,7 +63,8 @@ func LoginCmd(apiURL *string) *cobra.Command {
 
 			// Perform login request
 			// res, err := http.Post(*apiURL+"/auth/login", "application/json", bytes.NewBuffer(body))
-			res, err := post(
+			res, err := request(
+				http.MethodPost,
 				apiURL,
 				"/auth/login",
 				payload,
@@ -74,7 +75,6 @@ func LoginCmd(apiURL *string) *cobra.Command {
 				return
 			}
 			defer res.Body.Close()
-
 			output, _ := io.ReadAll(res.Body)
 
 			// If 2FA is required, the API responds with 202 and a temporary token
@@ -109,7 +109,8 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					// req.Header.Set("Content-Type", "application/json")
 
 					// verifyRes, err := http.DefaultClient.Do(req)
-					verifyRes, err := post(
+					verifyRes, err := request(
+						http.MethodPost,
 						apiURL,
 						"/secure/auth/2fa/verify",
 						verifyBody,

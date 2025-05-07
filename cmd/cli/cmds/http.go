@@ -16,44 +16,47 @@ func BuildUserAgent() string {
 	return fmt.Sprintf("goIAM-CLI/1.0 (%s; %s) Go-http-client/2.0", runtime.GOOS, runtime.GOARCH)
 }
 
-// post sends a JSON-encoded POST request to the goIAM API and prints the response.
+// request sends an HTTP request to the goIAM API with support for multiple methods.
 //
 // Parameters:
-//   - apiURL: pointer to the base API URL (e.g., https://api.example.com)
-//   - path: endpoint path (e.g., /auth/register)
-//   - data: a map of key-value pairs to encode as the request body
-//   - token: optional Bearer token to include in the Authorization header
-//   - headers: optional variadic map of additional headers to attach to the request
+//   - method: the HTTP method (e.g., "POST", "PATCH", "GET").
+//   - apiURL: pointer to the base API URL (e.g., https://api.example.com).
+//   - path: endpoint path (e.g., /auth/register).
+//   - data: a map of key-value pairs to encode as the request body (ignored for GET).
+//   - token: optional Bearer token for Authorization header.
+//   - headers: optional variadic map of custom headers (only the first map is used).
 //
-// It prints the response body to stdout and reports any errors encountered.
-func post(apiURL *string, path string, data map[string]any, token string, headers ...map[string]string) (resp *http.Response, err error) {
-	body, _ := json.Marshal(data)
-	req, _ := http.NewRequest("POST", *apiURL+path, bytes.NewBuffer(body))
+// Returns the *http.Response and error (if any).
+func request(method string, apiURL *string, path string, data map[string]any, token string, headers ...map[string]string) (resp *http.Response, err error) {
+	var body *bytes.Buffer
+	if data != nil && (method == http.MethodPost || method == http.MethodPatch || method == http.MethodPut) {
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+		body = bytes.NewBuffer(jsonData)
+	} else {
+		body = &bytes.Buffer{}
+	}
 
-	req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequest(method, *apiURL+path, body)
+	if err != nil {
+		return nil, err
+	}
+
 	req.Header.Set("User-Agent", BuildUserAgent())
-
+	if data != nil && (method == http.MethodPost || method == http.MethodPatch || method == http.MethodPut) {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-
-	// it will overwrite the headers if sent from the caller
-	// like authorization as well
 	if len(headers) > 0 {
 		for k, v := range headers[0] {
 			req.Header.Set(k, v)
 		}
 	}
 
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Println("Request failed:", err)
-		return nil, err
-	}
-	// defer res.Body.Close()
-
-	// result, _ := io.ReadAll(res.Body)
-	// fmt.Println(string(result))
-
-	return res, err
+	resp, err = http.DefaultClient.Do(req)
+	return resp, err
 }

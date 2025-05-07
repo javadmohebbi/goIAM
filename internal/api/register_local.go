@@ -55,48 +55,35 @@ func (a *API) handleRegisterLocal(c fiber.Ctx) error {
 
 	var org db.Organization
 
-	if body.OrganizationID == 0 {
-		// Create new organization if org_id is not provided
-		orgName := body.OrganizationName
-		orgSlug := body.OrganizationSlug
+	// Create new organization always
+	orgName := body.OrganizationName
+	if orgName == "" {
+		suffix := uuid.New().String()[:8]
+		orgName = "goIAM Organization " + suffix
+	}
+	orgSlug := strings.ToLower(strings.ReplaceAll(orgName, " ", "-"))
 
-		if orgName == "" {
-			// Default unique org name and slug
-			suffix := uuid.New().String()[:8]
-			orgName = "goIAM Organization " + suffix
-			orgSlug = "goIAM-org-" + suffix
-		} else {
-			// Use provided orgName and generate slug if needed
-			if orgSlug == "" {
-				orgSlug = strings.ToLower(strings.ReplaceAll(orgName, " ", "-"))
-			}
-			// Ensure slug is unique
-			var existing db.Organization
-			if err := a.iamDB.Where("slug = ?", orgSlug).First(&existing).Error; err == nil {
-				orgSlug = orgSlug + "-" + uuid.New().String()[:4]
-			}
-		}
+	// Ensure slug is unique
+	var existing db.Organization
+	if err := a.iamDB.Where("slug = ?", orgSlug).First(&existing).Error; err == nil {
+		orgSlug = orgSlug + "-" + uuid.New().String()[:4]
+	}
 
-		org = db.Organization{
-			Name:        orgName,
-			Slug:        orgSlug,
-			Description: "Created automatically during registration",
+	org = db.Organization{
+		Name:        orgName,
+		Slug:        orgSlug,
+		Description: "Created automatically during registration",
+	}
+	if err := a.iamDB.Create(&org).Error; err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed: organizations.name") {
+			return fiber.NewError(fiber.StatusConflict, "organization name already exists")
 		}
-		if err := a.iamDB.Create(&org).Error; err != nil {
-			if strings.Contains(err.Error(), "UNIQUE constraint failed: organizations.name") {
-				return fiber.NewError(fiber.StatusConflict, "organization name already exists")
-			}
-			return fiber.NewError(fiber.StatusInternalServerError, "failed to create organization")
-		}
+		return fiber.NewError(fiber.StatusInternalServerError, "failed to create organization")
+	}
 
-		// Seed default policies into the new organization
-		if err := seeds.SeedDefaultPoliciesForOrg(org.ID, a.iamDB); err != nil {
-			log.Printf("failed to seed default policies: %v", err)
-		}
-	} else {
-		if err := a.iamDB.First(&org, body.OrganizationID).Error; err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "specified organization not found")
-		}
+	// Seed default policies into the new organization
+	if err := seeds.SeedDefaultPoliciesForOrg(org.ID, a.iamDB); err != nil {
+		log.Printf("failed to seed default policies: %v", err)
 	}
 
 	// Hash the password

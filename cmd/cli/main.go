@@ -56,7 +56,7 @@ func main() {
 
 	// Add global flags
 	rootCmd.PersistentFlags().StringVar(&apiURL, "api", "http://localhost:8080", "Base API URL")
-	rootCmd.PersistentFlags().StringVar(&token, "token", "", "JWT token for authenticated routes")
+	rootCmd.PersistentFlags().StringVar(&token, "token", os.Getenv("IAM_JWT_TOKEN"), "JWT token for authenticated routes (or set IAM_JWT_TOKEN env)")
 
 	// Register subcommands
 	cmds.RegisterCommands(rootCmd, &apiURL, &token)

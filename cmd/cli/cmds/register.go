@@ -5,8 +5,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -29,22 +29,20 @@ import (
 //   - --middle
 //   - --last
 //   - --address
-//   - --organization-id
 //   - --organization-name
-//   - --organization-slug
 //
 // Example:
 //
-//	goiam register -u alice -e alice@example.com --organization-id 1
-func RegisterCmd(apiURL *string) *cobra.Command {
+//	goiam register -u alice -e alice@example.com --organization-name "Acme Corp"
+func RegisterCmd(apiURL *string, token *string) *cobra.Command {
 	var username, password, email, phone, first, middle, last, address string
-	var orgID string
-	var orgName, orgSlug string
+	var orgName string
 
 	cmd := &cobra.Command{
 		Use:   "register",
 		Short: "Register a new user",
 		Run: func(cmd *cobra.Command, args []string) {
+
 			// If password is not supplied via --password, read from stdin or terminal securely.
 			if password == "" {
 				fi, _ := os.Stdin.Stat()
@@ -93,38 +91,24 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 				}
 			}
 
-			var data map[string]any
-			if orgID != "" {
-				orgUint, err := strconv.ParseUint(orgID, 10, 32)
-				if err != nil {
-					fmt.Println("Invalid organization ID:", err)
-					return
-				}
-				data = map[string]any{
-					"organization_id": uint(orgUint),
-				}
-			} else {
-				data = map[string]any{}
-				if orgName != "" {
-					data["organization_name"] = orgName
-				}
-				if orgSlug != "" {
-					data["organization_slug"] = orgSlug
-				}
+			data := map[string]any{
+				"username":     username,
+				"password":     password,
+				"email":        email,
+				"phone_number": phone,
+				"first_name":   first,
+				"middle_name":  middle,
+				"last_name":    last,
+				"address":      address,
 			}
 
-			data["username"] = username
-			data["password"] = password
-			data["email"] = email
-			data["phone_number"] = phone
-			data["first_name"] = first
-			data["middle_name"] = middle
-			data["last_name"] = last
-			data["address"] = address
+			if orgName != "" {
+				data["organization_name"] = orgName
+			}
 
-			res, _ := post(apiURL, "/auth/register", data, "")
+			res, _ := request(http.MethodPost, apiURL, "/auth/register", data, "")
 			result, _ := io.ReadAll(res.Body)
-			fmt.Println(string(result))
+			fmt.Println("Result:", string(result))
 		},
 	}
 
@@ -137,13 +121,10 @@ func RegisterCmd(apiURL *string) *cobra.Command {
 	cmd.Flags().StringVar(&middle, "middle", "", "Middle name")
 	cmd.Flags().StringVar(&last, "last", "", "Last name")
 	cmd.Flags().StringVar(&address, "address", "", "Address")
-	cmd.Flags().StringVar(&orgID, "organization-id", "", "Organization ID (optional)")
 	cmd.Flags().StringVar(&orgName, "organization-name", "", "Name of new organization (optional)")
-	cmd.Flags().StringVar(&orgSlug, "organization-slug", "", "Slug of new organization (optional)")
 
 	cmd.MarkFlagRequired("username")
 	cmd.MarkFlagRequired("email")
-	// cmd.MarkFlagRequired("organization-id")
 
 	return cmd
 }

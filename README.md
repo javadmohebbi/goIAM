@@ -43,6 +43,7 @@ cd goIAM
 go run .
 ```
 
+
 ### 2. Example `config.yaml`
 
 ```yaml
@@ -53,6 +54,19 @@ database: "sqlite"
 database_dsn: "./data/iam.db"
 auth_provider: "local"
 ```
+
+### 3. Environment Variables
+
+You can override configuration values using environment variables:
+
+| Variable              | Description                                | Example              |
+|-----------------------|--------------------------------------------|----------------------|
+| IAM_PORT              | Port for HTTP server                       | `8080`               |
+| IAM_DEBUG             | Enable debug logging                       | `true`               |
+| IAM_CONFIG_PATH       | Path to YAML config file                   | `./config.yaml`      |
+| IAM_DATABASE          | Database engine                            | `sqlite`, `postgres` |
+| IAM_DATABASE_DSN      | Database connection string (DSN)           | `./data/iam.db`      |
+| IAM_AUTH_PROVIDER     | Comma-separated auth providers             | `local,ldap`         |
 
 ---
 

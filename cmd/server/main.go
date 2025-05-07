@@ -3,7 +3,10 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/javadmohebbi/goIAM/internal/api"
 	"github.com/javadmohebbi/goIAM/internal/config"
@@ -61,12 +64,36 @@ func Main() {
 	// db.Init(cfg.Database, cfg.DatabaseDSN)
 	_db := db.Init(cfg.Database, cfg.DatabaseDSN)
 
+	// creating new API server instance
 	_api := api.New(cfg, _db)
 
-	// Start API server
-	fmt.Printf("[goIAM] Starting on port %d with DB [%s]...\n", cfg.Port, cfg.Database)
-	if err := _api.StartServer(); err != nil {
-		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
-		os.Exit(1)
-	}
+	// Signal handeling
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(
+		sigCh,
+		syscall.SIGTERM, // "the normal way to politely ask a program to terminate"
+		syscall.SIGINT,  // Ctrl+C
+		syscall.SIGQUIT, // Ctrl-\
+		//syscall.SIGKILL, // "always fatal", "SIGKILL and SIGSTOP may not be caught by a program"
+		syscall.SIGHUP, // "terminal is disconnected"
+	)
+
+	go func() {
+		// Start API server
+		fmt.Printf("[goIAM] Starting on port %d with DB [%s]...\n", cfg.Port, cfg.Database)
+		if err := _api.StartServer(); err != nil {
+			// fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+			log.Println("Server error:", err)
+			// os.Exit(1)
+			sigCh <- syscall.SIGTERM
+		}
+	}()
+
+	sig := <-sigCh
+	log.Println("\nsignal recieved: ", sig.String())
+
+	// Close API for now
+	// but later will be done automatically
+	_api.StopAndClose()
+
 }

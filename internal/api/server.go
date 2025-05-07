@@ -3,6 +3,7 @@ package api
 
 import (
 	"fmt"
+	"log"
 	"runtime"
 	"time"
 
@@ -21,8 +22,17 @@ import (
 //   - error if the server fails to start.
 func (a *API) StartServer() error {
 	// Initialize Fiber app instance
-	app := fiber.New()
+	app := fiber.New(
+		fiber.Config{
+			ServerHeader: "goIAM",
+			AppName:      "goIAM",
+		},
+	)
 
+	// store fiber app in API
+	a._app = app
+
+	// server start time
 	a.startTime = time.Now()
 
 	// Simple health check endpoint
@@ -33,6 +43,7 @@ func (a *API) StartServer() error {
 			"go_version":    runtime.Version(),
 			"auth_provider": a.cfg.AuthProvider,
 			"port":          a.cfg.Port,
+			"app":           a._app.Config(),
 		})
 	})
 
@@ -43,4 +54,15 @@ func (a *API) StartServer() error {
 
 	// Start the server on the specified port
 	return app.Listen(fmt.Sprintf(":%d", a.cfg.Port))
+}
+
+// stop and close the API server
+func (a *API) StopAndClose() {
+	// for future use
+	log.Println("Stopping the server...!")
+
+	// shut down the app
+	a._app.RebuildTree().Shutdown()
+
+	log.Println("Stopped!")
 }

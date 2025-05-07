@@ -3,6 +3,7 @@ package api
 import (
 	"time"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/javadmohebbi/goIAM/internal/config"
 	"github.com/javadmohebbi/goIAM/internal/validation"
 	"gorm.io/gorm"
@@ -18,6 +19,8 @@ type API struct {
 	startTime time.Time
 
 	iamDB *gorm.DB
+
+	_app *fiber.App
 }
 
 // New returns a new instance of the API struct,

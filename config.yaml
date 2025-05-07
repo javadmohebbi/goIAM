@@ -83,3 +83,14 @@ database_dsn: "./iam.db"  # For SQLite, this is a file path
 #   password_regex: "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*#?&]{6,}$"  # Letters + numbers
 #   website_regex: "^https?://[\\w\\-\\.]+\\.\\w+"           # Basic http/https URL
 #   password_min_length: 6                                   # Minimum password length
+
+# === SMTP Configuration ===
+
+smtp:
+  host: smtp.example.com           # SMTP server host
+  port: 587                        # SMTP server port (e.g., 587 for TLS, 465 for SSL)
+  username: your-smtp-username     # SMTP username (usually your email address)
+  password: your-smtp-password     # SMTP password
+  from_name: "goIAM Notifications" # Display name for outgoing emails
+  from_email: no-reply@example.com # From email address used in outgoing emails
+  use_tls: true                    # Whether to use TLS for sending

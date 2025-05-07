@@ -27,6 +27,18 @@ type Config struct {
 	Validation    ValidationConfig     `yaml:"validation"`
 	AppName       string               `yaml:"appName"`    // Application name used in CLI and logs
 	ServerName    string               `yaml:"serverName"` // Server name for headers or UI
+	SMTP          SMTPConfig           `yaml:"smtp"`
+}
+
+// SMTPConfig holds configuration for outbound SMTP email.
+type SMTPConfig struct {
+	Host      string `yaml:"host"`
+	Port      int    `yaml:"port"`
+	Username  string `yaml:"username"`
+	Password  string `yaml:"password"`
+	FromName  string `yaml:"from_name"`
+	FromEmail string `yaml:"from_email"`
+	UseTLS    bool   `yaml:"use_tls"`
 }
 
 type ValidationConfig struct {

@@ -23,6 +23,7 @@ func (a *API) handleCreateUser(c fiber.Ctx) error {
 		LastName    string `json:"last_name"`
 		PhoneNumber string `json:"phone_number"`
 	}
+
 	if err := c.Bind().Body(&body); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}

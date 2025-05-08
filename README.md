@@ -66,7 +66,6 @@ You can override configuration values using environment variables:
 | IAM_CONFIG_PATH       | Path to YAML config file                   | `./config.yaml`      |
 | IAM_DATABASE          | Database engine                            | `sqlite`, `postgres` |
 | IAM_DATABASE_DSN      | Database connection string (DSN)           | `./data/iam.db`      |
-| IAM_AUTH_PROVIDER     | Comma-separated auth providers             | `local,ldap`         |
 
 ---
 

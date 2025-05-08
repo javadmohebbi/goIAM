@@ -24,6 +24,9 @@ func (a *API) registerRoutes(app *fiber.App) {
 
 	// auth and profile-related routes
 	a.registerAuthRoutes(secure)
+
+	// register user-related routes
+	a.registerUserRoutes(secure)
 }
 
 // handleLogin attempts login with each configured AuthProvider in order.
@@ -57,8 +60,12 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 				return nil
 			}
 		case "ldap":
-			// Most LDAPs do not support in-app registration
-			continue
+			// var cfg config.LDAPConfig
+			// Future: implement LDAP login
+		case "auth0":
+			// Future: implement Auth0 login
+		case "entra_id":
+			// Future: implement Entra ID login
 		}
 	}
 	return fiber.ErrUnauthorized

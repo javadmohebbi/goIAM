@@ -33,7 +33,7 @@ type Config struct {
 // SMTPConfig holds configuration for outbound SMTP email.
 type SMTPConfig struct {
 	Host      string `yaml:"host"`
-	Port      int    `yaml:"port"`
+	Port      uint   `yaml:"port"`
 	Username  string `yaml:"username"`
 	Password  string `yaml:"password"`
 	FromName  string `yaml:"from_name"`

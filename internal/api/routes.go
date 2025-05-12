@@ -18,6 +18,7 @@ func (a *API) registerRoutes(app *fiber.App) {
 	// Register a unified login and register endpoint
 	app.Post("/auth/login", a.handleLogin)
 	app.Post("/auth/register", a.handleRegister)
+	app.Post("/auth/reset/password/request", a.handleResetPasswordRequest)
 
 	// token check middleware
 	secure := app.Group("/s", middleware.RequireAuth(a.cfg, a.iamDB))
@@ -58,6 +59,27 @@ func (a *API) handleRegister(c fiber.Ctx) error {
 		switch provider.Name {
 		case "local":
 			if err := a.handleRegisterLocal(c); err == nil {
+				return nil
+			}
+		case "ldap":
+			// var cfg config.LDAPConfig
+			// Future: implement LDAP login
+		case "auth0":
+			// Future: implement Auth0 login
+		case "entra_id":
+			// Future: implement Entra ID login
+		}
+	}
+	return fiber.ErrUnauthorized
+}
+
+// handleRegister attempts registration with each configured AuthProvider in order.
+// Only local registration is generally supported.
+func (a *API) handleResetPasswordRequest(c fiber.Ctx) error {
+	for _, provider := range a.cfg.AuthProviders {
+		switch provider.Name {
+		case "local":
+			if err := a.handleResetPasswordRequestLocal(c); err == nil {
 				return nil
 			}
 		case "ldap":

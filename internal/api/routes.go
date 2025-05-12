@@ -20,13 +20,14 @@ func (a *API) registerRoutes(app *fiber.App) {
 	app.Post("/auth/register", a.handleRegister)
 
 	// token check middleware
-	secure := app.Group("/secure", middleware.RequireAuth(a.cfg, a.iamDB))
+	secure := app.Group("/s", middleware.RequireAuth(a.cfg, a.iamDB))
 
 	// auth and profile-related routes
 	a.registerAuthRoutes(secure)
 
 	// register user-related routes
-	a.registerUserRoutes(secure)
+	userRoutes := secure.Group("/user")
+	a.registerUserRoutes(userRoutes)
 }
 
 // handleLogin attempts login with each configured AuthProvider in order.

@@ -46,11 +46,11 @@ func UserAddCmd(apiURL *string, token *string) *cobra.Command {
 			defer res.Body.Close()
 
 			output, _ := io.ReadAll(res.Body)
-			if res.StatusCode != http.StatusAccepted {
+			if res.StatusCode != http.StatusCreated {
 				fmt.Printf("Error: status %d\n%s\n", res.StatusCode, string(output))
 				return
 			}
-			fmt.Println("User created successfully")
+			fmt.Println("User created successfully but inative. Activate the user setting a password")
 
 		},
 	}

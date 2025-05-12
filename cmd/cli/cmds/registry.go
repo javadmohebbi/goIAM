@@ -19,4 +19,5 @@ func RegisterCommands(root *cobra.Command, apiURL *string, token *string) {
 	root.AddCommand(Disable2FACmd(apiURL, token))       // Disable 2FA command
 	root.AddCommand(RegenBackupCodesCmd(apiURL, token)) // Regenerate backup codes
 	root.AddCommand(UpdateProfileCmd(apiURL, token))    // Update user profile
+	root.AddCommand(UserAddCmd(apiURL, token))          // Add user
 }

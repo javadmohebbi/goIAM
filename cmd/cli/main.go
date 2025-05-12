@@ -51,7 +51,7 @@ func main() {
 	// Define root command for goIAM CLI
 	rootCmd := &cobra.Command{
 		Use:   "goiam",
-		Short: "goIAM CLI - Manage IAM users and 2FA",
+		Short: "goIAM CLI - Command Line Interface for go Identity and Access Management",
 	}
 
 	// Add global flags

@@ -27,7 +27,7 @@ func RegenBackupCodesCmd(apiURL *string, token *string) *cobra.Command {
 		Short: "Regenerate backup codes",
 		Run: func(cmd *cobra.Command, args []string) {
 			// Construct POST request
-			req, _ := http.NewRequest("POST", *apiURL+"/secure/auth/backup-codes/regenerate", nil)
+			req, _ := http.NewRequest("POST", *apiURL+"/s/auth/backup-codes/regenerate", nil)
 			req.Header.Set("Authorization", "Bearer "+*token)
 
 			// Send request

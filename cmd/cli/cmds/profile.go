@@ -55,7 +55,7 @@ func UpdateProfileCmd(apiURL *string, token *string) *cobra.Command {
 			res, err := request(
 				http.MethodPatch,
 				apiURL,
-				"/secure/auth/profile",
+				"/s/auth/profile",
 				payload,
 				*token,
 			)

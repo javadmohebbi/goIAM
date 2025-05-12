@@ -32,7 +32,7 @@ func Disable2FACmd(apiURL *string, token *string) *cobra.Command {
 			data := map[string]string{"code": code}
 			body, _ := json.Marshal(data)
 
-			req, _ := http.NewRequest("POST", *apiURL+"/secure/auth/2fa/disable", bytes.NewBuffer(body))
+			req, _ := http.NewRequest("POST", *apiURL+"/s/auth/2fa/disable", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer "+*token)
 

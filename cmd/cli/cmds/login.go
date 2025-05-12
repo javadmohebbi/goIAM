@@ -104,7 +104,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					// vbody, _ := json.Marshal(verifyBody)
 
 					// Send 2FA verification request
-					// req, _ := http.NewRequest("POST", *apiURL+"/secure/auth/2fa/verify", bytes.NewBuffer(vbody))
+					// req, _ := http.NewRequest("POST", *apiURL+"/s/auth/2fa/verify", bytes.NewBuffer(vbody))
 					// req.Header.Set("Authorization", "Bearer "+unverifiedToken)
 					// req.Header.Set("Content-Type", "application/json")
 
@@ -112,7 +112,7 @@ func LoginCmd(apiURL *string) *cobra.Command {
 					verifyRes, err := request(
 						http.MethodPost,
 						apiURL,
-						"/secure/auth/2fa/verify",
+						"/s/auth/2fa/verify",
 						verifyBody,
 						"",
 						map[string]string{

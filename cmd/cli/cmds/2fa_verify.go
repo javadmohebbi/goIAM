@@ -35,7 +35,7 @@ func Verify2FACmd(apiURL *string, token *string) *cobra.Command {
 			body, _ := json.Marshal(data)
 
 			// Prepare request
-			req, _ := http.NewRequest("POST", *apiURL+"/secure/auth/2fa/verify", bytes.NewBuffer(body))
+			req, _ := http.NewRequest("POST", *apiURL+"/s/auth/2fa/verify", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer "+*token)
 

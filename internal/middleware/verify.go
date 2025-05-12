@@ -59,7 +59,7 @@ func RequireAuth(cfg *config.Config, iamDB *gorm.DB) fiber.Handler {
 		verified, _ := claims["2fa"].(bool)
 
 		if user.Requires2FA && !verified &&
-			path != "/secure/auth/2fa/verify" && path != "/secure/auth/2fa/setup" {
+			path != "/s/auth/2fa/verify" && path != "/s/auth/2fa/setup" {
 			return fiber.NewError(fiber.StatusForbidden, "2FA required")
 		}
 

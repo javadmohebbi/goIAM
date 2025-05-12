@@ -25,7 +25,7 @@ func Setup2FACmd(apiURL *string, token *string) *cobra.Command {
 		Use:   "2fa-setup",
 		Short: "Setup 2FA and get QR code",
 		Run: func(cmd *cobra.Command, args []string) {
-			url := *apiURL + "/secure/auth/2fa/setup"
+			url := *apiURL + "/s/auth/2fa/setup"
 
 			req, _ := http.NewRequest("POST", url, nil)
 			req.Header.Set("Authorization", "Bearer "+*token)

@@ -8,22 +8,22 @@ import (
 // registerUserRoutes defines routes for managing users within the authenticated user's organization.
 func (a *API) registerUserRoutes(secure fiber.Router) {
 	// Create a new user within the caller's organization
-	secure.Post("/users",
+	secure.Post("/create",
 		middleware.RequireAccess("create", "org:{org_id}:user", a.cfg),
 		a.handleCreateUser)
 
 	// // Update an existing user by ID
-	// secure.Patch("/users/:id",
+	// secure.Patch("/:username",
 	// 	middleware.RequireAccess("update", "org:{org_id}:user:{user_id}", a.cfg, a.iamDB),
 	// 	a.handleUpdateUser)
 
 	// // Delete a user by ID
-	// secure.Delete("/users/:id",
+	// secure.Delete("/:username",
 	// 	middleware.RequireAccess("delete", "org:{org_id}:user:{user_id}", a.cfg, a.iamDB),
 	// 	a.handleDeleteUser)
 
 	// // Get a specific user by ID
-	// secure.Get("/users/:id",
+	// secure.Get("/:username",
 	// 	middleware.RequireAccess("read", "org:{org_id}:user:{user_id}", a.cfg, a.iamDB),
 	// 	a.handleGetUser)
 

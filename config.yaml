@@ -87,10 +87,11 @@ database_dsn: "./iam.db"  # For SQLite, this is a file path
 # === SMTP Configuration ===
 
 smtp:
-  host: smtp.example.com           # SMTP server host
-  port: 587                        # SMTP server port (e.g., 587 for TLS, 465 for SSL)
-  username: your-smtp-username     # SMTP username (usually your email address)
-  password: your-smtp-password     # SMTP password
-  from_name: "goIAM Notifications" # Display name for outgoing emails
-  from_email: no-reply@example.com # From email address used in outgoing emails
-  use_tls: true                    # Whether to use TLS for sending
+  host: smtp.lab.local              # SMTP server host
+  port: 587                         # SMTP server port (e.g., 587 for TLS, 465 for SSL)
+  username: noreply@lab.local       # SMTP username (usually your email address)
+  password: secret                  # SMTP password
+  from_name: "goIAM Notifications"  # Display name for outgoing emails
+  from_email: noreply@lab.local     # From email address used in outgoing emails
+  use_tls: true                     # Whether to use TLS for sending
+

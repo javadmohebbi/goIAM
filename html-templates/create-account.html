@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Your Password</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f6f6f6; padding: 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+    <tr>
+      <td style="padding: 20px; text-align: center; background-color: #008080; color: white;">
+        <h2>{{.AppName}}</h2>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 30px;">
+        <h3>Welcome {{.Name}},</h3>
+        <p>Your account has been created. To activate your account and set your password, please click the button below:</p>
+        <p style="text-align: center;">
+          <a href="https://lab.local/activate?token={{.Token}}" style="background-color: #008080; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block;">Activate Account</a>
+        </p>
+        <p>If you did not expect this email, you can safely ignore it.</p>
+        <p>Thanks,<br/>The {{.AppName}} Team</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 15px; font-size: 12px; color: #999999; text-align: center;">
+        © {{.Year}} {{.AppName}}. All rights reserved.
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -50,7 +50,7 @@ func UserAddCmd(apiURL *string, token *string) *cobra.Command {
 				fmt.Printf("Error: status %d\n%s\n", res.StatusCode, string(output))
 				return
 			}
-			fmt.Println("User created successfully but inative. Activate the user setting a password")
+			fmt.Println("User created successfully but inative. User will recieve a link to activate their account")
 
 		},
 	}

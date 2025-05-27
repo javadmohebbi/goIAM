@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
+	"log"
 	"net"
 	"net/smtp"
 	"os"
@@ -32,22 +33,27 @@ func SendEmail(cfg *config.Config, subject string, to []string, body, mime strin
 	msg.WriteString("\r\n" + body)
 
 	addr := fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
-
+	tlsConfig := &tls.Config{ServerName: cfg.SMTP.Host}
 	var client *smtp.Client
 	var conn net.Conn
 	var err error
 
-	tlsConfig := &tls.Config{ServerName: cfg.SMTP.Host}
-
-	if cfg.SMTP.UseTLS && cfg.SMTP.Port == 465 {
-		// Implicit TLS (port 465)
+	switch cfg.SMTP.Port {
+	case 465:
+		if !cfg.SMTP.UseTLS {
+			return fmt.Errorf("implicit TLS on port 465 requires UseTLS=true")
+		}
+		fmt.Println("[DEBUG] Connecting with implicit TLS on port 465")
 		conn, err = tls.Dial("tcp", addr, tlsConfig)
 		if err != nil {
 			return fmt.Errorf("failed to dial TLS: %w", err)
 		}
 		client, err = smtp.NewClient(conn, cfg.SMTP.Host)
-	} else {
-		// STARTTLS (port 587)
+		if err != nil {
+			return fmt.Errorf("failed to create SMTP client: %w", err)
+		}
+	case 587:
+		fmt.Println("[DEBUG] Connecting over plain TCP on port 587")
 		conn, err = net.Dial("tcp", addr)
 		if err != nil {
 			return fmt.Errorf("failed to connect: %w", err)
@@ -56,37 +62,85 @@ func SendEmail(cfg *config.Config, subject string, to []string, body, mime strin
 		if err != nil {
 			return fmt.Errorf("failed to create SMTP client: %w", err)
 		}
-		if err = client.StartTLS(tlsConfig); err != nil {
-			return fmt.Errorf("failed to start TLS: %w", err)
+		if err = client.Hello("localhost"); err != nil {
+			return fmt.Errorf("HELO failed: %w", err)
 		}
+		if cfg.SMTP.UseTLS {
+			if ok, _ := client.Extension("STARTTLS"); ok {
+				fmt.Printf("[DEBUG] STARTTLS supported on port %d, proceeding\n", cfg.SMTP.Port)
+				if err = client.StartTLS(tlsConfig); err != nil {
+					return fmt.Errorf("STARTTLS failed on port %d: %w", cfg.SMTP.Port, err)
+				}
+				fmt.Printf("[DEBUG] STARTTLS completed on port %d\n", cfg.SMTP.Port)
+			} else {
+				return fmt.Errorf("STARTTLS not supported on port %d", cfg.SMTP.Port)
+			}
+		}
+	case 25:
+		fmt.Println("[DEBUG] Connecting over plain TCP on port 25")
+		conn, err = net.Dial("tcp", addr)
+		if err != nil {
+			return fmt.Errorf("failed to connect: %w", err)
+		}
+		client, err = smtp.NewClient(conn, cfg.SMTP.Host)
+		if err != nil {
+			return fmt.Errorf("failed to create SMTP client: %w", err)
+		}
+		if err = client.Hello("localhost"); err != nil {
+			return fmt.Errorf("HELO failed: %w", err)
+		}
+		if cfg.SMTP.UseTLS {
+			if ok, _ := client.Extension("STARTTLS"); ok {
+				fmt.Printf("[DEBUG] STARTTLS supported on port %d, proceeding\n", cfg.SMTP.Port)
+				if err = client.StartTLS(tlsConfig); err != nil {
+					return fmt.Errorf("STARTTLS failed on port %d: %w", cfg.SMTP.Port, err)
+				}
+				fmt.Printf("[DEBUG] STARTTLS completed on port %d\n", cfg.SMTP.Port)
+			} else {
+				return fmt.Errorf("STARTTLS not supported on port %d", cfg.SMTP.Port)
+			}
+		}
+	default:
+		return fmt.Errorf("unsupported SMTP port: %d", cfg.SMTP.Port)
 	}
 
 	auth := smtp.PlainAuth("", cfg.SMTP.Username, cfg.SMTP.Password, cfg.SMTP.Host)
+	log.Println(cfg.SMTP.Username)
 	if err = client.Auth(auth); err != nil {
 		return fmt.Errorf("auth failed: %w", err)
 	}
+	fmt.Println("[DEBUG] Authenticated with SMTP server")
 
 	if err = client.Mail(cfg.SMTP.FromEmail); err != nil {
 		return err
 	}
+	fmt.Printf("[DEBUG] MAIL FROM: %s\n", cfg.SMTP.FromEmail)
 	for _, recipient := range to {
 		if err = client.Rcpt(recipient); err != nil {
 			return err
 		}
+		fmt.Printf("[DEBUG] RCPT TO: %s\n", recipient)
 	}
 
 	w, err := client.Data()
 	if err != nil {
 		return err
 	}
+	fmt.Println("[DEBUG] Beginning DATA transmission")
 	if _, err = w.Write([]byte(msg.String())); err != nil {
 		return err
 	}
+	fmt.Println("[DEBUG] Email body written")
 	if err = w.Close(); err != nil {
 		return err
 	}
+	fmt.Println("[DEBUG] Email transmission completed")
 
-	return client.Quit()
+	err = client.Quit()
+	if err == nil {
+		fmt.Println("[DEBUG] SMTP session ended")
+	}
+	return err
 }
 
 // SendPlainTextEmail is a helper that sends a plain text email using UTF-8 encoding.

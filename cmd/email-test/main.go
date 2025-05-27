@@ -21,7 +21,7 @@ func main() {
 	user := db.User{
 		Username:  "javad",
 		FirstName: "Javad",
-		Email:     "javad@example.com",
+		Email:     "javad@lab.local",
 	}
 
 	if err := sendTestEmail(user, cfg); err != nil {

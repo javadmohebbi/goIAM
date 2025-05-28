@@ -32,7 +32,8 @@ func SendEmail(cfg *config.Config, subject string, to []string, body, mime strin
 	}
 	msg.WriteString("\r\n" + body)
 
-	addr := fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port)
+	// both for ipv4 and ipv6
+	addr := net.JoinHostPort(cfg.SMTP.Host, fmt.Sprintf("%d", cfg.SMTP.Port))
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to connect to SMTP server: %w", err)

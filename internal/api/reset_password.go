@@ -36,7 +36,7 @@ func (a *API) handleResetPasswordRequestLocal(c fiber.Ctx) error {
 
 	// if email provided
 	if body.Email != "" {
-		if err := a.iamDB.Model(&db.User{}).Where("username = ?", body.Username).First(&user); err != nil {
+		if err := a.iamDB.Model(&db.User{}).Where("email = ?", body.Email).First(&user); err != nil {
 			// log error
 		}
 		return sendResetPasswordEmail(user, a.cfg)

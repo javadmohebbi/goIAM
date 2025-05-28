@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -77,7 +78,10 @@ func sendResetPasswordEmail(u db.User, cfg *config.Config) error {
 		"Token":   token,
 	}
 
+	// reset password template
+	tmplt := filepath.Join(cfg.SMTP.TemplateDir, "reset-password.html")
+
 	// Send the reset password email using HTML template
 	return smtpclient.SendEmailFromHTMLTemplate(cfg, "Reset Your Password",
-		[]string{u.Email}, "templates/reset-password.html", placeholders)
+		[]string{u.Email}, tmplt, placeholders)
 }

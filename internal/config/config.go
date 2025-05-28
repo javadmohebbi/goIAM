@@ -32,13 +32,14 @@ type Config struct {
 
 // SMTPConfig holds configuration for outbound SMTP email.
 type SMTPConfig struct {
-	Host      string `yaml:"host"`
-	Port      uint   `yaml:"port"`
-	Username  string `yaml:"username"`
-	Password  string `yaml:"password"`
-	FromName  string `yaml:"from_name"`
-	FromEmail string `yaml:"from_email"`
-	UseTLS    bool   `yaml:"use_tls"`
+	Host        string `yaml:"host"`
+	Port        uint   `yaml:"port"`
+	Username    string `yaml:"username"`
+	Password    string `yaml:"password"`
+	FromName    string `yaml:"from_name"`
+	FromEmail   string `yaml:"from_email"`
+	UseTLS      bool   `yaml:"use_tls"`
+	TemplateDir string `yaml:"templateDir"`
 }
 
 type ValidationConfig struct {

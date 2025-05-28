@@ -3,13 +3,9 @@ package api
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/google/uuid"
-	"github.com/javadmohebbi/goIAM/internal/config"
 	"github.com/javadmohebbi/goIAM/internal/db"
-	"github.com/javadmohebbi/goIAM/internal/smtpclient"
 	"github.com/javadmohebbi/goIAM/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -93,34 +89,34 @@ func (a *API) handleCreateUser(c fiber.Ctx) error {
 	})
 }
 
-// sendUserCreationEmail generates an activation token, populates an email template
-// with the provided user information and configuration, and sends the account activation email.
-//
-// Parameters:
-//   - u: the user who has just been created and needs to activate their account
-//   - cfg: application configuration including SMTP settings
-//
-// Behavior:
-//   - Uses the user's FirstName if available, otherwise falls back to Username
-//   - Generates a UUID token (should be stored for later validation — TODO)
-//   - Replaces placeholders in the HTML template and sends the email
-func sendUserCreationEmail(u db.User, cfg *config.Config) error {
-	// Choose the name to personalize the email
-	_name := u.Username
-	if u.FirstName != "" {
-		_name = u.FirstName
-	}
-	// Generate a unique activation token (should be stored with expiration — TODO)
-	token := uuid.New().String()
-	// Prepare template placeholders
-	placeholders := map[string]string{
-		"Name":    _name,
-		"AppName": cfg.AppName,
-		"Year":    fmt.Sprintf("%d", time.Now().Year()),
-		"Token":   token,
-	}
+// // sendUserCreationEmail generates an activation token, populates an email template
+// // with the provided user information and configuration, and sends the account activation email.
+// //
+// // Parameters:
+// //   - u: the user who has just been created and needs to activate their account
+// //   - cfg: application configuration including SMTP settings
+// //
+// // Behavior:
+// //   - Uses the user's FirstName if available, otherwise falls back to Username
+// //   - Generates a UUID token (should be stored for later validation — TODO)
+// //   - Replaces placeholders in the HTML template and sends the email
+// func sendUserCreationEmail(u db.User, cfg *config.Config) error {
+// 	// Choose the name to personalize the email
+// 	_name := u.Username
+// 	if u.FirstName != "" {
+// 		_name = u.FirstName
+// 	}
+// 	// Generate a unique activation token (should be stored with expiration — TODO)
+// 	token := uuid.New().String()
+// 	// Prepare template placeholders
+// 	placeholders := map[string]string{
+// 		"Name":    _name,
+// 		"AppName": cfg.AppName,
+// 		"Year":    fmt.Sprintf("%d", time.Now().Year()),
+// 		"Token":   token,
+// 	}
 
-	// Send the activation email using HTML template
-	return smtpclient.SendEmailFromHTMLTemplate(cfg, "Activate Your Account",
-		[]string{u.Email}, "templates/reset-password.html", placeholders)
-}
+// 	// Send the activation email using HTML template
+// 	return smtpclient.SendEmailFromHTMLTemplate(cfg, "Activate Your Account",
+// 		[]string{u.Email}, "templates/reset-password.html", placeholders)
+// }

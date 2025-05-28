@@ -95,3 +95,5 @@ smtp:
   from_email: noreply@lab.local     # From email address used in outgoing emails
   use_tls: false                    # Whether to use TLS for sending
 
+  # email template DIR
+  templateDir: /Users/javad/Projects/goIAM/html-templates

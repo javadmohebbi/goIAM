@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"log"
 	"net"
 	"net/smtp"
 	"os"
@@ -105,17 +106,20 @@ func SendEmailFromHTMLTemplate(cfg *config.Config, subject string, to []string, 
 
 	content, err := os.ReadFile(templatePath)
 	if err != nil {
+		log.Println("unable to read template:", err)
 		return fmt.Errorf("unable to read template: %w", err)
 	}
 
 	tmpl, err := template.New("email").Parse(string(content))
 	if err != nil {
+		log.Println("failed to parse template:", err)
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, placeholders)
 	if err != nil {
+		log.Println("failed to execute template:", err)
 		return fmt.Errorf("failed to execute template: %w", err)
 	}
 

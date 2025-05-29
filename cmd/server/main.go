@@ -80,7 +80,7 @@ func Main() {
 
 	go func() {
 		// Start API server
-		fmt.Printf("[goIAM] Starting on port %d with DB [%s]...\n", cfg.Port, cfg.Database)
+		fmt.Printf("[%s] Starting on port %d with DB [%s]...\n", cfg.AppName, cfg.Port, cfg.Database)
 		if err := _api.StartServer(); err != nil {
 			// fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 			log.Println("Server error:", err)
